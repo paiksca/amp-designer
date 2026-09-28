@@ -1,0 +1,43 @@
+[project]
+name = "amp-designer"
+version = "1.0.0"
+description = "Property-conditioned peptide language model with distribution-matched library selection, for AMP Challenge 2027"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Samuel Paik-Heintz" },
+]
+dependencies = [
+    "numpy>=2.1,<3",
+    "torch>=2.4,<3",
+    "scikit-learn>=1.5,<2",
+    "scipy>=1.13,<2",
+    "rapidfuzz>=3.9,<4",
+    "levenshtein>=0.25,<1",
+]
+
+[project.optional-dependencies]
+# Only needed to retrain from scratch; the entry point does not import these.
+training = [
+    "pandas>=2.2,<3",
+]
+
+[project.scripts]
+# The challenge template's validator runs `generate`; the starter kits' validator
+# runs one of the five category scripts. All six dispatch to the same pipeline and
+# write to a directory named after the script that was invoked.
+generate = "amp_designer.generate:main"
+generate_broad_spectrum = "amp_designer.generate:main"
+generate_gram_pos = "amp_designer.generate:main"
+generate_gram_neg = "amp_designer.generate:main"
+generate_mdr = "amp_designer.generate:main"
+generate_therapeutic = "amp_designer.generate:main"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "src"
+module-name = "amp_designer"
