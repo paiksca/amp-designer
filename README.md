@@ -254,8 +254,8 @@ of 0.65 blocks near-copies without binding on genuine variety.
 One gate applies before any of this: we drop from every ranked list any candidate whose
 predicted probability of HC50 >= 128 µM falls below 0.50. Potency and hemolysis both rise
 with charge and hydrophobicity, so ranking on potency alone drifts toward hemolytic
-sequences. A hard cut fits here because the models rank potency better than they rank
-hemolysis, and one severely hemolytic peptide wastes a wet-lab slot in every category,
+sequences. A hard cut is appropriate here because the models rank potency better than they
+rank hemolysis, and one severely hemolytic peptide wastes a wet-lab slot in every category,
 selectivity included.
 
 Where our ensemble and APEX disagree about a candidate, we reduce its blended score. Taking
