@@ -51,12 +51,12 @@ sequence cluster in descending quality. Because we fix the distribution and use 
 inside it, one library satisfies Phase 1's four metric families at once, which otherwise
 conflict.
 
-We rank the top-100 on what Phase 2 scores, optimizing expected value across it because
-organizers draw 25 peptides uniformly and average them. We weight Gram-negative potency
-double because 15 of the 20 panel strains are Gram-negative. We treat hemolysis as a
-constraint because HC50 is reported only up to 128 µM and past that ceiling a lower value
-scores the same. We penalize synthesis risk because a peptide that fails synthesis is never
-replaced and enters the mean at its worst value.
+We rank the top-100 on what Phase 2 scores. Organizers draw 25 peptides at random and
+average them, so we optimize expected value across the list and hold quality flat along it.
+We weight Gram-negative potency double because 15 of the 20 panel strains are Gram-negative.
+We treat hemolysis as a constraint because HC50 is reported only up to 128 µM and past that
+ceiling a lower value scores the same. We penalize synthesis risk because a peptide that
+fails synthesis is never replaced and enters the mean at its worst value.
 
 Ranked entries clear the strict synthesis rules, a gate on predicted hemolysis, an exact
 `Levenshtein.ratio <= 0.75` check against the 39,448 reference sequences, a ban on sharing
@@ -65,9 +65,9 @@ any two ranked sequences.
 
 We vendor APEX-pathogen because it predicts micromolar MIC for 11 of the 20 panel strains
 and comes from the laboratory running Phase 2. We rank-blend it with our ensembles at 45%
-and penalize candidates the two disagree about. We re-estimate hemolysis with an ESM-2 head
-over the few thousand candidates that reach the lists because it is our weakest prediction
-and the one the selectivity category depends on.
+and penalize candidates APEX and our ensembles disagree about. We re-estimate hemolysis with
+an ESM-2 head over the few thousand candidates that reach the lists because it is our
+weakest prediction and the one the selectivity category depends on.
 
 We apply no manual curation.
 
@@ -120,10 +120,10 @@ numbers match what the literature reports on a clean split.
 
 The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same 5,617
 sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755, ESM-2
-alone 0.764, and the two together 0.786. Embeddings alone lose to the combination because
-the descriptors state charge and hydrophobicity where a masked language model only implies
-them. We vendor the encoder at float16 under `checkpoint/esm2_t12_35M/`, so generation
-fetches nothing.
+alone 0.764, and descriptors with ESM-2 0.786. Embeddings alone lose to the combination
+because the descriptors state charge and hydrophobicity where a masked language model only
+implies them. We vendor the encoder at float16 under `checkpoint/esm2_t12_35M/`, so
+generation fetches nothing.
 
 Most potent DBAASP entries are C-terminally amidated and amidation raises potency
 several-fold, but this competition requires free termini, so we made the amidation state a
@@ -140,9 +140,9 @@ also the model that lab used to score the AMP-Diffusion baseline, and that lab r
 APEX gives us a second opinion from a model trained elsewhere. On the 47 HydrAMP peptides
 with prospective wet-lab MIC values, it reaches Spearman 0.50 and AUROC 0.80 for active at
 <= 32 µM. Our ensemble appears to beat it there, but 32 of those 47 sequences are in APEX's
-training data, which makes that comparison leakage. The two agree at only Spearman 0.69, so
-we blend ranks 55:45 toward our models, which cover all 20 strains and include a hemolysis
-head APEX does not have.
+training data, which makes that comparison leakage. APEX and our ensemble agree at only
+Spearman 0.69, so we blend ranks 55:45 toward our models, which cover all 20 strains and
+include a hemolysis head APEX does not have.
 
 Four checkpoints rank 4,000 peptides at Spearman 0.983 against the full set, at 81 MB
 against 220 MB.
@@ -155,9 +155,9 @@ category and clear both the strict synthesis rules and the hemolysis gate, and t
 hemolysis head runs over the same 3,552, which settles the ranked lists.
 
 We take the shortlist cell by cell because the high-scoring end of the pool is more cationic
-than the reference set and a global cut would re-shape the library. The two score scales are
-not comparable, so we quantile-map the shortlist's refined scores back onto the coarse
-scores of the same candidates.
+than the reference set and a global cut would re-shape the library. The coarse and refined
+score scales are not comparable, so we quantile-map the shortlist's refined scores back onto
+the coarse scores of the same candidates.
 
 #### The distilled surrogate
 
@@ -229,12 +229,13 @@ We then check survivors against the 39,448 reference sequences with an exact
 MinHash cluster at three, and drop any candidate within 0.65 Levenshtein of a sequence we
 have already picked.
 
-We set the threshold at 0.75 (under the validator's 0.80) because the proposal states the
-same rule as MMseqs2 alignment identity, and the two are different measures. MMseqs2 reports
-identity over the aligned region, so one exact 10-residue match inside a 25-mer scores 1.0
-however different the rest is. Banning shared 10-mers closes that gap without making us run
-an aligner at generation time. The rule drops 3% of our ranked candidates, where it would
-drop 54% of real AMPs measured against the rest of the reference set.
+The validator checks Levenshtein ratio, and the proposal states the same rule as MMseqs2
+alignment identity. Those two measures differ, so we set our threshold at 0.75, under the
+validator's 0.80. MMseqs2 reports identity over the aligned region, so one exact 10-residue
+match inside a 25-mer scores 1.0 however different the rest is. Banning shared 10-mers
+closes that gap without making us run an aligner at generation time. The rule drops 3% of
+our ranked candidates, where it would drop 54% of real AMPs measured against the rest of the
+reference set.
 
 On that same comparison a held-out slice of real AMPs reaches MMseqs2 identity 0.875 and
 Levenshtein 0.900 against the reference, where these ranked lists are at 0.60 and 0.67. The
@@ -263,8 +264,8 @@ also demotes some potent peptides.
 
 We measure with `seqme` 0.5.1 against the challenge's reference antibacterial set, using a
 held-out slice of that set to show what real AMPs score. The baseline column is the HydrAMP
-library shipped in its starter kit. Embeddings are ESM-2 t6_8M, one of the two model
-families the competition names, at 4,000 sequences per side.
+library shipped in its starter kit. Embeddings are ESM-2 t6_8M, one of the embedding models
+the competition names, at 4,000 sequences per side.
 
 | metric | want | this library | HydrAMP baseline | real AMPs |
 |---|---|---|---|---|
@@ -306,6 +307,11 @@ k-mer embedding measures what the term suppresses.
 Each of the five lists has 100 sequences, all in the library and predicted active at 16 µM
 or below, none sharing an exact 10-mer with the reference set or standing above a
 Levenshtein ratio of 0.75 to it, and no pair above 0.65 to another.
+
+The proposal and the template say the 25 assayed peptides come from the top 100, and the FAQ
+says the top 50. We hold quality flat across all 100 so the lists work under either reading.
+The broad-spectrum list has a median predicted MIC of 6.2 µM over ranks 1 to 50 and 6.9 µM
+over ranks 51 to 100.
 
 | list | predicted MIC50 | P(HC50 >= 128) | worst entry | predicted window | envelope |
 |---|---|---|---|---|---|
