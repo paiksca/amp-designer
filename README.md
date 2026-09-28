@@ -139,9 +139,9 @@ instead of 220 MB.
 Scoring runs in three stages, spending model compute where the stakes are highest. Three
 heads run over all 300,000 candidates and decide the library, where a within-cell ranking
 only needs to be roughly right. The full per-species ensemble runs over a 40,000-sequence
-shortlist. APEX re-ranks the roughly 6,000 candidates that lead any category and already
-clear the strict synthesis rules, which is where the ranked lists are settled and where each
-entry commits a wet-lab slot.
+shortlist. APEX re-ranks the roughly 3,000 candidates that lead any category and clear both
+the strict synthesis rules and the safety gate, which is where the ranked lists are settled
+and where each entry commits a wet-lab slot.
 
 The two score scales are not comparable, so the shortlist's refined scores are quantile-mapped
 back onto the coarse scores of those same candidates. That keeps the better ordering without
@@ -200,10 +200,12 @@ The threshold is 0.75 rather than the validator's 0.80 because the proposal stat
 rule as MMseqs2 alignment identity, and the two are different measures. MMseqs2 reports
 identity over the aligned region, so one exact 10-residue match inside a 25-mer scores 1.0
 however different the rest is; the substring ban closes that without needing an aligner at
-generation time. It costs little. Across 465 ranked candidates only 3% carry a shared
-10-mer, against 54% of real AMPs measured against the rest of the reference set. On the
-same comparison a held-out slice of real AMPs reaches MMseqs2 identity 0.875 and
-Levenshtein 0.900 against the reference, where these ranked lists sit at 0.620 and 0.667.
+generation time. It costs little. Only 3% of ranked candidates carry a shared 10-mer,
+against 54% of real AMPs measured against the rest of the reference set. On the same comparison a held-out slice of real AMPs reaches MMseqs2 identity 0.875 and
+Levenshtein 0.900 against the reference, where these ranked lists sit at 0.60 and 0.67. The
+identity hits that remain above 0.80 are short local alignments: median 11 residues over
+half the query, with 3 of 129 reaching 80% query coverage, where the real-AMP hits cover the
+query completely.
 
 The pairwise cap is a hedge rather than a metric. The models separate active from inactive
 far better than they rank among the active, so 25 peptides drawn from a list built on one
