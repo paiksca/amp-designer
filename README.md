@@ -253,24 +253,24 @@ families the competition names, at 4,000 sequences per side.
 | metric | want | this library | HydrAMP baseline | real AMPs |
 |---|---|---|---|---|
 | Uniqueness | high | 1.000 | 1.000 | 1.000 |
-| Diversity | high | **0.854** | 0.805 | 0.855 |
+| Diversity | high | **0.853** | 0.805 | 0.855 |
 | Novelty (exact) | high | **1.000** | 1.000 | 0.000 |
-| Authenticity | high | 0.774 | 0.914 | 0.550 |
-| FBD vs AMPs | low | **0.491** | 7.859 | 0.053 |
-| FBD vs generic peptides | low | **4.042** | 13.201 | 3.116 |
-| MMD vs AMPs | low | **0.955** | 48.717 | 0.031 |
-| Precision | high | **0.893** | 0.648 | 0.947 |
-| Recall | high | **0.831** | 0.402 | 0.937 |
-| Clipped density | high | **0.600** | 0.105 | 1.000 |
-| Clipped coverage | high | **0.514** | 0.129 | 1.000 |
-| Conformity score | high | **0.503** | 0.408 | 0.496 |
-| KL charge | low | **0.071** | 0.559 | 0.009 |
-| KL hydrophobic moment | low | **0.002** | 0.066 | 0.000 |
-| KL GRAVY | low | **0.018** | 0.223 | 0.000 |
-| KL length | low | **0.078** | 257.5 | 0.009 |
-| mean charge | match | 2.73 | 4.88 | 2.63 |
+| Authenticity | high | 0.764 | 0.914 | 0.550 |
+| FBD vs AMPs | low | **0.473** | 7.859 | 0.053 |
+| FBD vs generic peptides | low | **3.822** | 13.201 | 3.116 |
+| MMD vs AMPs | low | **0.876** | 48.717 | 0.031 |
+| Precision | high | **0.882** | 0.648 | 0.947 |
+| Recall | high | **0.838** | 0.402 | 0.937 |
+| Clipped density | high | **0.580** | 0.105 | 1.000 |
+| Clipped coverage | high | **0.512** | 0.129 | 1.000 |
+| Conformity score | high | **0.504** | 0.408 | 0.496 |
+| KL charge | low | **0.091** | 0.559 | 0.009 |
+| KL hydrophobic moment | low | **0.003** | 0.066 | 0.000 |
+| KL GRAVY | low | **0.015** | 0.223 | 0.000 |
+| KL length | low | **0.065** | 257.5 | 0.009 |
+| mean charge | match | 2.71 | 4.88 | 2.63 |
 | mean length | match | 18.6 | 20.8 | 18.7 |
-| composition L2 gap | low | **0.015** | 0.256 | 0.005 |
+| composition L2 gap | low | **0.013** | 0.256 | 0.005 |
 
 The conformity score and the diversity land on the held-out reference set's own value, so
 the library is as realistic as real AMPs are while every sequence stays novel by exact
@@ -287,6 +287,33 @@ changes no ranking. The one metric that moves is precision, which reads 0.876 ag
 baseline's 0.918 under the k-mer embedding and 0.893 against 0.648 under ESM-2. The k-mer
 reading is an artifact: the library's novelty term penalises reuse of reference 6-mers, so
 a k-mer embedding measures the very thing that term suppresses.
+
+## The ranked lists
+
+All five carry 100 sequences, every one present in the library, every one predicted active
+at 16 µM or below, none sharing an exact 10-mer with the reference set, none above a
+Levenshtein ratio of 0.75 to it, and no pair above 0.65 to each other.
+
+| list | predicted MIC50 | P(HC50 >= 128) | worst entry | predicted window | envelope |
+|---|---|---|---|---|---|
+| broad spectrum | 6.63 µM | 0.61 | 0.50 | 13.3 | 0.86 |
+| Gram-negative | 6.28 µM | 0.60 | 0.50 | 13.5 | 0.90 |
+| Gram-positive | 6.88 µM | 0.61 | 0.50 | 12.8 | 0.76 |
+| MDR | 6.73 µM | 0.61 | 0.50 | 13.4 | 0.81 |
+| selectivity | 6.77 µM | 0.63 | 0.50 | 15.4 | 0.90 |
+
+The five lists share between 28 and 71 sequences pairwise and together cover 241 distinct
+peptides across the 500 slots, so ranking separately per category is not redundant. The
+selectivity list has both the highest predicted window and the highest hemolytic safety,
+which is what its objective asks for.
+
+Two changes were made after measuring them rather than assuming them. Enlarging the
+shortlist from 40,000 to 90,000 paid for raising the hemolysis gate from 0.35 to 0.50, and
+retraining on the doubled dataset changed which candidates the gate admits. Scoring the
+lists from before and after with one set of models, mean P(HC50 >= 128) rises from 0.40 to
+0.61, the worst entry in a list from 0.17 to 0.50, and the predicted safety window by 22 to
+33 percent, for 7 percent of predicted potency. The earlier models were admitting peptides
+that better-informed models consider hemolytic.
 
 ## What the models get wrong
 
