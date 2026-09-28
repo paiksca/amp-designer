@@ -19,9 +19,9 @@ a directory named after the script, byte-identical on repeated runs.
 
 The challenge template's validator runs `uv run generate` and reads `generate/`. Both
 starter kits ship a validator that runs one of five `generate_<category>` scripts and reads
-the matching directory. We expose all six, so either validator passes.
+the matching directory. We expose all six entry points, so either validator passes.
 
-The six share one library because Phase 1 scores diversity, novelty, distributional
+The entry points share one library because Phase 1 scores diversity, novelty, distributional
 similarity and property conformity, which are not category-specific. The ranked lists differ
 because Phase 2 scores five categories against different slices of the 20-strain panel. Both
 official baselines expose only `generate_broad_spectrum`.
@@ -51,8 +51,8 @@ per sequence cluster in descending quality. Because we fix the distribution and 
 freedom inside it, one library satisfies Phase 1's four metric families at once, which
 otherwise conflict.
 
-We rank the top-100 on what Phase 2 scores, optimizing expected value across all 100 because
-organizers draw 25 peptides uniformly from the list and average them. We weight
+We rank the top-100 on what Phase 2 scores, optimizing expected value across the whole list
+because organizers draw 25 peptides uniformly from the list and average them. We weight
 Gram-negative potency double because 15 of the 20 panel strains are Gram-negative. We treat
 hemolysis as a constraint because HC50 is reported only up to 128 µM and past that ceiling a
 lower value scores the same. We penalize synthesis risk because a peptide that fails
@@ -77,7 +77,7 @@ We apply no manual curation.
 
 `src/amp_designer/lm.py` is a 4-layer, 192-dimensional, 6-head decoder-only transformer
 (1.81M parameters) over the 20 amino acids, with key/value caching for decoding. We prefix
-every sequence with four control tokens:
+sequences with four control tokens:
 
 | control | bins | source |
 |---|---|---|
@@ -133,17 +133,18 @@ made the amidation state a model input and hold it at free acid.
 
 We vendor four of the eight released APEX-pathogen checkpoints under `checkpoint/apex/` (Wan
 et al., de la Fuente lab, *Nature Microbiology* 2025, MIT licensed). APEX predicts MIC in µM
-against an 11-pathogen panel, and all 11 are on this competition's 20-strain panel: the 5
-Gram-positive strains, 6 of the 15 Gram-negative, and 4 of the 8 MDR isolates. It is also
-the model that lab used to score the AMP-Diffusion baseline, and that lab runs Phase 2.
+against an 11-pathogen panel, and all 11 strains are on this competition's 20-strain panel:
+the 5 Gram-positive strains, 6 of the 15 Gram-negative, and 4 of the 8 MDR isolates. It is
+also the model that lab used to score the AMP-Diffusion baseline, and that lab runs Phase 2.
 
-We use it for independence. On the 47 HydrAMP peptides with prospective wet-lab MIC values,
-APEX reaches Spearman 0.50 and AUROC 0.80 for active at <= 32 µM. Our ensemble appears to
-beat it there, but 32 of those 47 sequences are in APEX's training data, which makes that
-comparison leakage. The two agree at Spearman 0.69 only, so we blend ranks 55:45 toward our
-models, which cover all 20 strains and include a hemolysis head APEX does not have.
+APEX gives us a second opinion from a model trained elsewhere. On the 47 HydrAMP peptides
+with prospective wet-lab MIC values, it reaches Spearman 0.50 and AUROC 0.80 for active at
+<= 32 µM. Our ensemble appears to beat it there, but 32 of those 47 sequences are in APEX's
+training data, which makes that comparison leakage. The two agree at Spearman 0.69 only, so
+we blend ranks 55:45 toward our models, which cover all 20 strains and include a hemolysis
+head APEX does not have.
 
-Four checkpoints rank 4,000 peptides at Spearman 0.983 against the full eight, at 81 MB
+Four checkpoints rank 4,000 peptides at Spearman 0.983 against the full set, at 81 MB
 against 220 MB.
 
 We score in four stages, putting the slow models only where the stakes are highest. We
@@ -164,7 +165,7 @@ scores of the same candidates.
 names. MBC-Attention itself takes 27 minutes per 300,000 candidates and requires TensorFlow
 and a vendored model. We distilled it into the same gradient-boosting form as our other
 heads, fitting on 59,466 sequences spanning the library, the training corpus and the
-reference set. It reproduces the real model at Spearman 0.801 on held-out clusters.
+reference set. It reproduces the original at Spearman 0.801 on held-out clusters.
 
 Measured directly on MBC-Attention at 4,000 sequences per side, this library has a median
 predicted MIC of 19.2 µM against 27.4 µM for real AMPs and 14.5 µM for the HydrAMP baseline.
@@ -202,12 +203,12 @@ correct that with a price per residue. Selection maximizes `quality - compositio
 and after each pass we raise the price of any residue we over-produced. The prices only
 reorder candidates inside a cell, so the quotas and the property marginals do not change.
 
-Cells are still wide. Two sequences can share all three bins and still differ in
-composition, and if we fill a cell from one corner we cover less of the reference
-distribution than its quota suggests. So we k-means cluster the reference members of a cell
-and split its quota across those sub-regions in proportion to how many reference sequences
-each contains. That turns 53 cells into 453 sub-regions, with the sub-quotas summing back to
-the cell quota.
+A cell still covers a wide range. Two sequences can share all three bins and still differ in
+composition, so filling a cell from one corner covers less of the reference distribution
+than its quota suggests. We k-means cluster the reference sequences inside each cell and
+split the cell's quota across those sub-regions in proportion to how many reference
+sequences each contains. That turns 53 cells into 453 sub-regions, with the sub-quotas
+summing back to the cell quota.
 
 The split raises clipped coverage from 0.512 to 0.544 and clipped density from 0.580 to
 0.621, with recall, precision, conformity, the Frechet distance and KL-length all better. It
@@ -241,10 +242,10 @@ identity hits that remain above 0.80 are short local alignments, median 11 resid
 half the query, with 3 of 129 reaching 80% query coverage. The real-AMP hits cover the query
 completely.
 
-The pairwise cap is a hedge. The models separate active from inactive far better than they
-rank among the active, so 25 peptides drawn from a list built on one scaffold can fail
-together for the same reason. Real AMPs have a median pairwise ratio of 0.258, and a cap of
-0.65 removes near-copies while leaving genuine variety.
+The pairwise cap guards against a shared failure. The models separate active from inactive
+far better than they rank among the active, so 25 peptides drawn from a list built on one
+scaffold can fail together for the same reason. Real AMPs have a median pairwise ratio of
+0.258, so a cap of 0.65 only catches near-copies.
 
 One gate applies before any of this. We drop from every ranked list any candidate whose
 predicted probability of HC50 >= 128 µM falls below 0.50. Ranking on potency alone favors
@@ -257,7 +258,7 @@ Where our ensemble and APEX disagree about a candidate, we reduce its blended sc
 the top of a noisy score over-represents candidates whose error happened to run favorably,
 and a peptide that only one of two independent models rates highly is usually one of those.
 Lowering their scores improves the average of the 25 peptides organizers draw, even though a
-few real finds drop with them.
+few good candidates drop with them.
 
 ## Phase-1 metrics
 
@@ -327,18 +328,18 @@ and the highest hemolytic safety.
 ## What the models get wrong
 
 We scored nine peptides with published free-termini MIC and human-erythrocyte HC50, spanning
-selectivity indices from 15 to 111, against poly-Ala, poly-Glu and a scrambled sequence. All
-nine outrank the three decoys, and our MIC predictions land within five-fold of the measured
-values.
+selectivity indices from 15 to 111, against poly-Ala, poly-Glu and a scrambled sequence.
+Every peptide outranks every decoy, and our MIC predictions land within five-fold of the
+measured values.
 
 Our hemolysis head remains the weak one even after the ESM-2 rebuild. Over those nine its
 predicted safety window correlates with the measured index at Spearman 0.25, and we predict
 50 µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
 This pipeline would have excluded it outright because its N-terminal `LLLFLL` block trips
 the six-residue beta-sheet run rule. Short cationic peptides that carry their hydrophobicity
-in one contiguous block are where the head fails. That 0.25 understates it. We chose those
-nine for high selectivity, so the range is narrow, and across the full range it reaches
-AUROC 0.786.
+in one contiguous block are where the head fails. The Spearman 0.25 understates it. We chose
+those peptides for high selectivity, so their measured indices span a narrow range, and
+across the full range the head reaches AUROC 0.786.
 
 The ranked lists are also concentrated in one structural class. Every entry is a cationic
 amphipathic sequence of the helix-forming kind, and across the selectivity list the residue
