@@ -209,8 +209,8 @@ def dbaasp_harvest() -> pd.DataFrame:
     The DBAASP slice redistributed inside battleamp-snakemake is an older snapshot.
     A fresh harvest of all 25,542 records adds 5,134 sequences with MIC that the
     snapshot does not carry, 4,218 of them on panel species, which is a 65%
-    increase over the assembled table. `work/data/dbaasp/harvest.py` fetches the
-    records and `parse.py` flattens them; set `AMP_DBAASP` to the flat CSV.
+    increase over the assembled table. `training/dbaasp_harvest.py` fetches and
+    flattens the records. Set `AMP_DBAASP` to the flat CSV it writes.
     """
     path = Path(
         os.environ.get(
@@ -268,7 +268,7 @@ def hydramp_experimental() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def slay() -> pd.DataFrame:
-    """SLAY display screen against E. coli; lfcMLE is a growth-inhibition log ratio."""
+    """SLAY display screen against E. coli. lfcMLE is a growth-inhibition log ratio."""
     pos = pd.read_csv(BATTLE / "data" / "slay" / "slay_positives.csv")
     neg = pd.read_csv(BATTLE / "data" / "slay" / "slay_negatives.csv")
     df = pd.concat([pos, neg], ignore_index=True)

@@ -10,12 +10,9 @@ Re-run it to rebuild them.
 |---|---|---|
 | `amp_positives.txt` | 44,585 | known antibacterial peptides, 8-50 residues, canonical alphabet, deduplicated. Trains the language model. |
 | `amp_negatives.txt` | 15,821 | sequences assumed non-antimicrobial, same length window, disjoint from the positives. Trains the AMP classifier. |
-| `mic.csv.gz` | 137,819 | one row per (sequence, target species) with MIC converted to µM, a censoring flag for assay-ceiling values, and a C-terminal amidation flag. 12,993 distinct sequences. |
+| `mic.csv.gz` | 137,786 | one row per (sequence, target species) with MIC converted to µM, a censoring flag for assay-ceiling values, and a C-terminal amidation flag. 12,996 distinct sequences. |
 | `challenge_reference.txt` | 39,448 | the challenge's reference set, copied for convenience. Not training data. |
-
-`build_data.py` also assembles a 438,484-row table of SLAY display-screen growth-inhibition
-ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here. Re-run
-`build_data.py` to produce it.
+| `slay.csv.gz` | 438,484 | SLAY display-screen growth-inhibition ratios against *E. coli*. Assembled and committed, used by no shipped checkpoint. |
 
 HemoPI2 is GPL-3.0 licensed, so we read its hemolysis data at training time and keep it out
 of this repository. Its HC50 values come from DBAASP and Hemolytik, both public. We pool
@@ -24,10 +21,10 @@ agree at Spearman 0.916 on the 1,306 they share, which is our check that they me
 same thing.
 
 The direct harvest is why the MIC table is 65% larger in distinct sequences than the
-redistributed snapshot: 12,993 against 7,872, with 4,218 of the new ones on panel species.
-`work/data/dbaasp/harvest.py` fetches the records and `parse.py` flattens them. The flat
-table is 17 MB and is not committed. Rebuild it with those two scripts and point
-`AMP_DBAASP` at the result.
+redistributed snapshot: 12,996 against 7,872, with 4,218 of the new ones on panel species.
+`training/dbaasp_harvest.py` fetches and flattens the records. The flat table is 17 MB and
+stays out of this repository. Rebuild it with that script and point `AMP_DBAASP` at the
+result.
 
 ## Upstream sources
 
@@ -44,6 +41,8 @@ table is 17 MB and is not committed. Rebuild it with those two scripts and point
 | [UniProt](https://www.uniprot.org) | CC BY 4.0 | non-AMP negatives |
 | [HemoPI2](https://github.com/raghavagps/HemoPI2) (Rathore et al., *Commun Biol* 8:176, 2025) | GPL-3.0 (code), data from DBAASP and Hemolytik | HC50 values in µM |
 | [SLAY](https://doi.org/10.1038/s41467-018-08181-y), via `szczurek-lab/battleamp-snakemake` | CC BY 4.0 | display-screen activity, assembled but unused |
+| [ESM-2](https://huggingface.co/facebook/esm2_t12_35M_UR50D) `esm2_t12_35M_UR50D` (Lin et al., *Science* 379:1123, 2023) | MIT | protein language model embeddings for the hemolysis head, vendored under `checkpoint/esm2_t12_35M/` |
+| [APEX-pathogen](https://doi.org/10.1038/s41564-024-01907-3) (Wan et al., *Nature Microbiology* 2025) | MIT | MIC prediction over 11 pathogens, four checkpoints vendored under `checkpoint/apex/` |
 | `szczurek-lab/hydramp-starter-kit` `experimental/` | MIT | 31 HydrAMP peptides with measured HC50, added to the hemolysis set |
 
 We copy the challenge reference set at `data/antibacterial.fasta` verbatim from the

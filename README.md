@@ -122,8 +122,8 @@ The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over th
 sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755, ESM-2
 alone 0.764, and descriptors with ESM-2 0.786. Embeddings alone lose to the combination
 because the descriptors state charge and hydrophobicity where a masked language model only
-implies them. We vendor the encoder at float16 under `checkpoint/esm2_t12_35M/`, so
-generation fetches nothing.
+implies them. We vendor `facebook/esm2_t12_35M_UR50D` (Lin et al., *Science* 2023, MIT
+licensed) at float16 under `checkpoint/esm2_t12_35M/`, so generation fetches nothing.
 
 Most potent DBAASP entries are C-terminally amidated and amidation raises potency
 several-fold, but this competition requires free termini, so we made the amidation state a
@@ -310,8 +310,8 @@ Levenshtein ratio of 0.75 to it, and no pair above 0.65 to another.
 
 The proposal and the template say the 25 assayed peptides come from the top 100, and the FAQ
 says the top 50. We hold quality flat across all 100 so the lists work under either reading.
-The broad-spectrum list has a median predicted MIC of 6.2 µM over ranks 1 to 50 and 6.9 µM
-over ranks 51 to 100.
+The broad-spectrum list has a median predicted MIC of 7.0 µM over ranks 1 to 50 and 8.0 µM
+over ranks 51 to 100, with predicted safety at 0.65 and 0.61.
 
 | list | predicted MIC50 | P(HC50 >= 128) | worst entry | predicted window | envelope |
 |---|---|---|---|---|---|
@@ -326,7 +326,7 @@ match measured peptides that are both potent and non-hemolytic. The hemolysis fi
 from the descriptor head while selection used the ESM head, so they are an independent
 check.
 
-The five lists share between 28 and 71 sequences pairwise and together cover 241 distinct
+The five lists share between 31 and 64 sequences pairwise and together cover 225 distinct
 peptides across the 500 slots. The selectivity list has both the highest predicted window
 and the highest hemolytic safety.
 
@@ -373,14 +373,16 @@ git clone https://github.com/raghavagps/HemoPI2                    ../HemoPI2
 uv sync --extra training
 AMP_UPSTREAM=.. uv run python -m training.build_data     # writes data/training/
 uv run python -m training.train_scorers                  # writes checkpoint/scorers.pkl.gz
+uv run python -m training.train_hemolysis_esm            # adds the ESM-2 hemolysis heads
 uv run python -m training.train_lm                       # writes checkpoint/peptide_lm.pt
 ```
 
 `training/build_controls.py` rebuilds `checkpoint/controls.npz` on its own, with different
 tilts toward potency and hemolytic safety, without retraining the language model.
 
-`train_scorers.py` needs MMseqs2 on `PATH` for the grouped cross-validation splits, and the
-entry point does not.
+`train_hemolysis_esm.py` adds the `hem_esm:` heads to the bundle `train_scorers.py` wrote,
+so run it second. Both need MMseqs2 on `PATH` for the grouped cross-validation splits, and
+the entry point does not.
 
 ## Training data
 
@@ -394,7 +396,9 @@ src/amp_designer/
   lm.py          conditioned transformer, KV-cached decoding
   features.py    physicochemical descriptors
   scoring.py     MIC / hemolysis / AMP-classifier inference
+  esm.py         vendored ESM-2 encoder for the hemolysis head
   apex.py        vendored APEX-pathogen inference
+  apex_models.py the module APEX checkpoints were pickled against
   categories.py  the five Phase-2 categories and their ranking objectives
   select.py      quota grid and cluster-first selection
   synthesis.py   synthesis and solubility risk rules

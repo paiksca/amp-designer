@@ -30,7 +30,7 @@ def max_levenshtein_ratio(
 ) -> np.ndarray:
     """Per-query maximum Levenshtein.ratio against the reference set.
 
-    Values at or below `threshold` are reported exactly; anything above is exact
+    Values at or below `threshold` are reported exactly, and anything above is exact
     too, because only the length-compatible references are scored and those are
     scored in full.
     """
@@ -187,7 +187,7 @@ def shares_long_substring(
     ratio. Blocking shared 10-mers satisfies the stricter reading without needing
     an aligner at generation time.
 
-    It costs little: 3% of the ranked candidates carry one, against 54% of real
+    The rule drops 3% of our ranked candidates, where it would drop 54% of real
     AMPs measured against the rest of the reference set.
     """
     out = np.zeros(len(sequences), dtype=bool)

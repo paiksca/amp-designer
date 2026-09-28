@@ -5,8 +5,8 @@ Harvesting the detail API directly adds 5,134 sequences with MIC and 370 with
 human-erythrocyte HC50 that the snapshot does not carry, which is a 65% increase
 in distinct MIC sequences.
 
-    python -m training.dbaasp_harvest --out ../work/data/dbaasp
-    AMP_DBAASP=../work/data/dbaasp/dbaasp_flat.csv python -m training.build_data
+    python -m training.dbaasp_harvest --out data/dbaasp
+    AMP_DBAASP=data/dbaasp/dbaasp_flat.csv python -m training.build_data
 
 The fetch is resumable: a record already on disk is skipped, so re-running it
 continues rather than restarting. The server throttles above about eight workers,
@@ -186,7 +186,7 @@ def parse(raw_dir: Path, out: Path) -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", type=Path, default=Path("../work/data/dbaasp"))
+    ap.add_argument("--out", type=Path, default=Path("data/dbaasp"))
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--skip-fetch", action="store_true")
     args = ap.parse_args()
