@@ -67,7 +67,7 @@ We vendor APEX-pathogen because it predicts micromolar MIC for 11 of the 20 pane
 and comes from the laboratory running Phase 2. We rank-blend it with our ensembles at 45%
 and penalize candidates APEX and our ensembles disagree about. We re-estimate hemolysis with
 an ESM-2 head over the few thousand candidates that reach the lists because it is our
-weakest prediction and the one the selectivity category depends on.
+weakest prediction and the selectivity category depends on it.
 
 We apply no manual curation.
 
@@ -181,7 +181,7 @@ model with that failure mode.
 `src/amp_designer/select.py`. We read quotas over the (length, charge, hydrophobic moment)
 grid straight off the reference set's histogram, with no reweighting, and put a small floor
 under occupied cells. We add the floor because Phase 1 measures KL(reference || generated),
-which scores a missing mode far worse than an over-represented one.
+which scores a missing mode far worse than an over-represented mode.
 
 We copy the charge histogram unchanged, which is the pipeline's largest trade-off. Predicted
 activity rises with net charge. Over a 6,000-sequence sample of the reference set, the AMP
@@ -225,7 +225,7 @@ basic residues in any five-residue window, beta-sheet formers under 42%, net cha
 published AMP would trip it.
 
 We then check survivors against the 39,448 reference sequences with an exact
-`Levenshtein.ratio`, drop any that share an exact 10-residue substring with one, cap each
+`Levenshtein.ratio`, drop any that share an exact 10-residue substring with them, cap each
 MinHash cluster at three, and drop any candidate within 0.65 Levenshtein of a sequence we
 have already picked.
 
@@ -337,7 +337,7 @@ selectivity indices from 15 to 111, against poly-Ala, poly-Glu and a scrambled s
 peptides outrank the decoys, and our MIC predictions land within five-fold of the measured
 values.
 
-Our hemolysis head remains the weak one after the ESM-2 rebuild. Over those nine its
+Our hemolysis head remains the weakest after the ESM-2 rebuild. Over those nine its
 predicted safety window correlates with the measured index at Spearman 0.25, and we predict
 50 µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
 This pipeline would have excluded it because its N-terminal `LLLFLL` block trips the
@@ -348,8 +348,8 @@ Across the full range the head reaches AUROC 0.786.
 
 The ranked lists are also concentrated in one structural class. Entries are cationic
 amphipathic sequences of the helix-forming kind, built from Lys and Arg with Ile, Leu, Val
-and Trp, and no Cys or Met. That is the best-validated AMP class and the one our training
-data is densest in. If it fails systematically, the peptides in the draw fail with it, so we
+and Trp, and no Cys or Met. That class is the best validated, and our training data is
+densest in it. If it fails systematically, the peptides in the draw fail with it, so we
 spread each list of 100 over 99 or 100 distinct MinHash clusters with no pair above a 0.65
 Levenshtein ratio.
 
