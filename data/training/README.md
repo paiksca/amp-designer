@@ -1,8 +1,8 @@
 # Training data disclosure
 
-Every source is public. Nothing proprietary or non-public was used, so nothing additional
-needs releasing under the competition's data rules. `build_data.py` assembles the files in
-this directory from the repositories listed below. Re-run it to rebuild them.
+Every source is public, so the competition's data rules ask for no additional release.
+`build_data.py` assembles the files in this directory from the repositories listed below.
+Re-run it to rebuild them.
 
 ## Assembled files
 
@@ -17,12 +17,11 @@ this directory from the repositories listed below. Re-run it to rebuild them.
 ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here. Re-run
 `build_data.py` to produce it.
 
-Hemolysis data is read directly from the HemoPI2 release at training time and is not
-redistributed here, because that repository is GPL-3.0 licensed. The underlying HC50
-values come from DBAASP and Hemolytik, both public. Pooled with the direct DBAASP
-harvest, which adds 370 sequences HemoPI2 does not carry. The two agree at Spearman 0.916
-on the 1,306 they share, which is the check that they measure the same thing before being
-pooled.
+We read hemolysis data from the HemoPI2 release at training time rather than
+redistributing it, because that repository is GPL-3.0 licensed. Its HC50 values come from
+DBAASP and Hemolytik, both public. We pool them with the direct DBAASP harvest, which adds
+370 sequences HemoPI2 does not have. The two agree at Spearman 0.916 on the 1,306 they
+share, which is our check that they measure the same thing.
 
 The direct harvest is why the MIC table is 65% larger in distinct sequences than the
 redistributed snapshot: 12,993 against 7,872, with 4,218 of the new ones on panel species.
@@ -32,10 +31,10 @@ table is 17 MB and is not committed. Rebuild it with those two scripts and point
 
 ## Upstream sources
 
-| source | licence | used for |
+| source | license | used for |
 |---|---|---|
 | [DBAASP](https://dbaasp.org) (Pirtskhalava et al., *NAR* 49:D288, 2021), harvested directly from the detail API | CC BY 4.0 | MIC per species and human-erythrocyte HC50, with terminal modifications and chemistry flags. All 25,542 records. |
-| [DBAASP v3](https://dbaasp.org) snapshot redistributed in `szczurek-lab/battleamp-snakemake` | CC BY 4.0 | the same database at an earlier snapshot, kept because its species labels are already normalised |
+| [DBAASP v3](https://dbaasp.org) snapshot redistributed in `szczurek-lab/battleamp-snakemake` | CC BY 4.0 | the same database at an earlier snapshot, kept because its species labels are already normalized |
 | [GRAMPA](https://github.com/zswitten/Antimicrobial-Peptides) (Witten & Witten), via `szczurek-lab/hydramp-starter-kit` | MIT | MIC against *E. coli*, as log10(MIC/µM) |
 | [APD3 / APD6](https://aps.unmc.edu) (Wang et al., *NAR* 54:D363, 2026) | free for academic use | known-AMP sequences, via the challenge reference set and dbAMP pooling |
 | [DRAMP](http://dramp.cpu-bioinfor.org) | free for academic use | known-AMP sequences |
@@ -43,18 +42,17 @@ table is 17 MB and is not committed. Rebuild it with those two scripts and point
 | [MarLys / MLAMP](https://doi.org/10.17632/w4hb5grjwb.3) (Marczak et al., 2026) | CC0 | the challenge reference set `data/antibacterial.fasta`, which aggregates thirteen primary AMP databases |
 | [AMP Scanner v2](https://www.dveltri.com/ascan/) (Veltri et al., 2018), via `szczurek-lab/hydramp-starter-kit` | free for academic use | AMP / non-AMP classifier training set |
 | [UniProt](https://www.uniprot.org) | CC BY 4.0 | non-AMP negatives |
-| [HemoPI2](https://github.com/raghavagps/HemoPI2) (Rathore et al., *Commun Biol* 8:176, 2025) | GPL-3.0 (code); data from DBAASP and Hemolytik | HC50 values in µM |
+| [HemoPI2](https://github.com/raghavagps/HemoPI2) (Rathore et al., *Commun Biol* 8:176, 2025) | GPL-3.0 (code), data from DBAASP and Hemolytik | HC50 values in µM |
 | [SLAY](https://doi.org/10.1038/s41467-018-08181-y), via `szczurek-lab/battleamp-snakemake` | CC BY 4.0 | display-screen activity, assembled but unused |
 | `szczurek-lab/hydramp-starter-kit` `experimental/` | MIT | 31 HydrAMP peptides with measured HC50, added to the hemolysis set |
 
-The challenge reference set at `data/antibacterial.fasta` is copied verbatim from the
-challenge template and is used only for the overlap and novelty checks, not as training
+We copy the challenge reference set at `data/antibacterial.fasta` verbatim from the
+challenge template and use it only for the overlap and novelty checks, never as training
 data.
 
 ## Two label-quality traps in DBAASP
 
-Both were measured rather than assumed, and both cost real accuracy when they were
-present.
+We measured both, and both cost accuracy.
 
 **Potency measures are not interchangeable.** A peptide's `targetActivities` list mixes MIC
 with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are panel
@@ -65,23 +63,22 @@ AUROC 0.801 to 0.750 even though it added 59% more sequences. `dbaasp_harvest.py
 
 **A censored HC50 is a lower bound, not a measurement.** Most non-hemolytic peptides are
 recorded as ">100 µM" or similar, and dropping them throws away the safe class while
-treating them as measurements understates safety. Values censored at or above the
-competition's 128 µM ceiling are clipped to it, since the ceiling is where the scale ends
-anyway. Values censored below it are ambiguous and are dropped rather than guessed. That
-leaves 5,747 sequences with a usable hemolysis label against 1,957 from HemoPI2 alone.
+treating them as measurements understates safety. We clip values censored at or above the
+competition's 128 µM ceiling to the ceiling, where the scale ends anyway, and drop values
+censored below it as ambiguous. That leaves 5,747 sequences with a usable hemolysis label against 1,957 from HemoPI2 alone.
 
-Hemolysis records are also restricted to human erythrocytes. Sheep, rabbit and horse red
-cells differ in sensitivity, and Phase 2 measures human cells.
+We keep only human-erythrocyte hemolysis records. Sheep, rabbit and horse red cells differ
+in sensitivity, and Phase 2 measures human cells.
 
 ## Preprocessing
 
-- Sequences are upper-cased, restricted to `ACDEFGHIKLMNPQRSTVWY`, and kept only at 8 to 50
+- We upper-case sequences, restrict them to `ACDEFGHIKLMNPQRSTVWY`, and keep only 8 to 50
   residues, matching the competition's own rules.
-- MIC concentrations given in µg/ml are converted to µM using the molecular weight computed
+- We convert MIC concentrations given in µg/ml to µM using the molecular weight computed
   from the sequence with average residue masses plus water.
-- A concentration written as `>X` is recorded at X with `censored = True`, meaning the
-  assay never reached inhibition.
-- Replicate measurements are reduced to the median per (sequence, species, amidation), and
-  MIC is capped at the competition's 64 µM ceiling before the log2 transform.
-- Hemolysis values are averaged in log space per sequence, and HC50 is capped at the
-  competition's 128 µM ceiling.
+- We record a concentration written as `>X` at X with `censored = True`, meaning the assay
+  never reached inhibition.
+- We take the median of replicate measurements per (sequence, species, amidation) and cap
+  MIC at the competition's 64 µM ceiling before the log2 transform.
+- We average hemolysis values in log space per sequence and cap HC50 at the competition's
+  128 µM ceiling.

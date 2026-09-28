@@ -1,7 +1,7 @@
 # scripts/
 
-Both validators that are circulating, copied verbatim from the organizers' repositories.
-They disagree about the entry point, so this submission satisfies both.
+Both validators in circulation, copied verbatim from the organizers' repositories. They
+disagree about the entry point, so we satisfy both.
 
 | file | source | runs | reads |
 |---|---|---|---|

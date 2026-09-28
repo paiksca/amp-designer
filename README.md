@@ -1,9 +1,9 @@
 # amp-designer
 
-A submission for [AMP Challenge 2027](https://github.com/szczurek-lab/amp-challenge-2027):
-a property-conditioned peptide language model whose output is selected to match the
-known-AMP distribution cell by cell, while spending every remaining degree of freedom
-on diversity, predicted potency, predicted low hemolysis, and synthesis risk.
+A submission for [AMP Challenge 2027](https://github.com/szczurek-lab/amp-challenge-2027): a
+property-conditioned peptide language model whose output is selected to match the known-AMP
+distribution cell by cell, while spending every remaining degree of freedom on diversity,
+predicted potency, predicted low hemolysis, and synthesis risk.
 
 ```bash
 uv run generate                     # template validator: writes generate/
@@ -14,19 +14,18 @@ uv run generate_mdr
 uv run generate_therapeutic
 ```
 
-Each writes `library.fasta` (50,000 sequences) and `top.fasta` (100 ranked candidates)
-into a directory named after the script. Every file is byte-identical on repeated runs.
+Each writes `library.fasta` (50,000 sequences) and `top.fasta` (100 ranked candidates) into
+a directory named after the script. Every file is byte-identical on repeated runs.
 
 The challenge template's validator runs `uv run generate` and reads `generate/`. Both
-starter kits ship a validator that runs one of five `generate_<category>` scripts and
-reads the matching directory. All six entry points are exposed, so either validator
-passes.
+starter kits ship a validator that runs one of five `generate_<category>` scripts and reads
+the matching directory. We expose all six, so either validator passes.
 
-The library is the same across all six, because Phase 1 scores diversity, novelty,
-distributional similarity and property conformity, none of which is category-specific.
-The ranked lists differ: Phase 2 scores five categories against different slices of the
-20-strain panel, and the list that wins one does not win another. Both official baselines
-expose only `generate_broad_spectrum`. This submission ranks separately for all five.
+All six share one library, because Phase 1 scores diversity, novelty, distributional
+similarity and property conformity, none of which is category-specific. The ranked lists
+differ, because Phase 2 scores five categories against different slices of the 20-strain
+panel and the list that wins one does not win another. Both official baselines expose only
+`generate_broad_spectrum`.
 
 | entry point | ranked on |
 |---|---|
@@ -38,52 +37,49 @@ expose only `generate_broad_spectrum`. This submission ranks separately for all 
 
 ## Abstract
 
-A 1.8M-parameter decoder-only transformer is trained on 44,585 known antibacterial
-peptides drawn from public databases. Each training sequence carries a four-token
-control prefix giving its length bin, net-charge bin, predicted Gram-negative potency
-quintile, and predicted hemolytic-safety quartile. The last two come from gradient-boosted
-ensembles fitted in this repository on DBAASP, GRAMPA and HemoPI2 assay data, so the
-conditioning signal is self-distilled from measured activity rather than hand-specified.
+We train a 1.8M-parameter decoder-only transformer on 44,585 known antibacterial peptides
+drawn from public databases. Each training sequence carries a four-token control prefix
+giving its length bin, net-charge bin, predicted Gram-negative potency quintile, and
+predicted hemolytic-safety quartile. We compute the last two with gradient-boosted ensembles
+fitted here on DBAASP, GRAMPA and HemoPI2 assay data, so the conditioning signal is
+self-distilled from measured activity rather than hand-specified.
 
-Sampling draws 300,000 candidates using only control combinations the training corpus
-actually contains, reweighted toward the potent and non-hemolytic end of that set.
-Candidates are then selected, not filtered: quotas over a (length, net charge, hydrophobic
-moment) grid are copied without reweighting from the reference antibacterial set, and
-inside each cell candidates are taken one per sequence cluster in descending quality.
-Fixing the distribution and spending the freedom inside it is what lets one library
-satisfy Phase 1's four metric families at once, which otherwise pull against each other.
+We sample 300,000 candidates, using only control combinations the training corpus actually
+contains and reweighting toward the potent, non-hemolytic end of that set. We then select
+rather than filter: we copy quotas over a (length, net charge, hydrophobic moment) grid from
+the reference antibacterial set without reweighting, and inside each cell we take one
+candidate per sequence cluster in descending quality. Fixing the distribution and spending
+the freedom inside it is what lets one library satisfy Phase 1's four metric families at
+once, which otherwise pull against each other.
 
-The ranked top-100 is chosen on the quantity Phase 2 scores: 25 peptides are drawn
-uniformly from it and the team score is their arithmetic mean, so the objective is
-expected value across all 100 rather than the best few. Gram-negative potency carries
-double weight because 15 of the 20 panel strains are Gram-negative. Hemolysis enters as a
-constraint rather than an objective, because HC50 is reported only up to 128 µM and past
-that ceiling being less hemolytic earns nothing. Synthesis risk is penalised directly,
-because a peptide that fails synthesis is never replaced and enters the mean at its worst
-value.
+We rank the top-100 on the quantity Phase 2 scores. Organizers draw 25 peptides uniformly
+from the list and average them, so we optimize expected value across all 100 rather than the
+best few. We weight Gram-negative potency double, because 15 of the 20 panel strains are
+Gram-negative. We treat hemolysis as a constraint rather than an objective, because HC50 is
+reported only up to 128 µM and past that ceiling being less hemolytic earns nothing. We
+penalize synthesis risk directly, because a peptide that fails synthesis is never replaced
+and enters the mean at its worst value.
+
 Every entry clears a strict synthesis rule set, a gate on predicted hemolysis, an exact
 `Levenshtein.ratio <= 0.75` check against all 39,448 reference sequences, a ban on sharing
-any exact 10-residue substring with them, and a rule that no two ranked sequences exceed a
-Levenshtein ratio of 0.65 to each other, so a single mistaken scaffold cannot take the
-whole draw down with it.
+any exact 10-residue substring with them, and a cap of 0.65 on the Levenshtein ratio between
+any two ranked sequences.
 
-Ranking is done five times, once per Phase-2 category, because the categories score
-different slices of the 20-strain panel and the list that wins one does not win another.
-APEX-pathogen, which predicts micromolar MIC for 11 of those 20 strains and comes from the
-laboratory running Phase 2, is vendored and rank-blended with the in-house ensembles at
-45%, with a penalty on how far the two disagree. Hemolysis, the weakest prediction and the
-one the selectivity category turns on, is re-estimated with an ESM-2 head over the few
-thousand candidates that reach the ranked lists.
+We bring in two outside signals. APEX-pathogen predicts micromolar MIC for 11 of the 20
+panel strains and comes from the laboratory running Phase 2, so we vendor it and rank-blend
+it with our own ensembles at 45%, penalizing candidates the two disagree about. Hemolysis is
+our weakest prediction and the one the selectivity category turns on, so we re-estimate it
+with an ESM-2 head over the few thousand candidates that reach the lists.
 
-No manual curation or hand-selection is applied at any stage.
+We apply no manual curation or hand-selection at any stage.
 
 ## How it works
 
 ### 1. Conditioned generation
 
 `src/amp_designer/lm.py` is a 4-layer, 192-dimensional, 6-head decoder-only transformer
-(1.81M parameters) over the 20 amino acids, with key/value caching for decoding. Every
-sequence is prefixed with four control tokens:
+(1.81M parameters) over the 20 amino acids, with key/value caching for decoding. We prefix
+every sequence with four control tokens:
 
 | control | bins | source |
 |---|---|---|
@@ -92,18 +88,17 @@ sequence is prefixed with four control tokens:
 | Gram-negative potency | 5 | quintile of this repo's MIC ensemble |
 | hemolytic safety | 4 | quartile of this repo's P(HC50 >= 128 µM) |
 
-`checkpoint/controls.npz` holds the 687 control combinations the corpus contains, with
-mass reweighted by `exp(0.55 * potency_bin + 0.35 * safety_bin)`. Sampling never requests
-a combination the model has not seen, which keeps the conditioning in distribution.
-Candidates are drawn at three temperatures (0.85, 1.0, 1.15) under nucleus sampling at
-`top_p=0.95`: the cool pass supplies high-likelihood sequences, the warm pass supplies
-diversity.
+`checkpoint/controls.npz` holds the 687 control combinations the corpus contains, with mass
+reweighted by `exp(0.55 * potency_bin + 0.35 * safety_bin)`. We never request a combination
+the model has not seen, which keeps the conditioning in distribution. We draw candidates at
+three temperatures (0.85, 1.0, 1.15) under nucleus sampling at `top_p=0.95`: the cool pass
+supplies high-likelihood sequences, the warm pass supplies diversity.
 
 ### 2. Scoring
 
 `checkpoint/scorers.pkl.gz` holds gradient-boosted ensembles fitted in
-`training/train_scorers.py`. Accuracy is measured with five-fold cross-validation grouped
-by MMseqs2 cluster at 50% identity, because DBAASP is dense with analogue series and an
+`training/train_scorers.py`. We measure accuracy with five-fold cross-validation grouped by
+MMseqs2 cluster at 50% identity, because DBAASP is dense with analogue series and an
 ungrouped split reports roughly twice the real accuracy.
 
 | head | n | Spearman | AUROC |
@@ -122,123 +117,110 @@ ungrouped split reports roughly twice the real accuracy.
 | MBC-Attention surrogate | 59,466 | 0.80 | |
 | AMP classifier | 30,000 | | 0.92 |
 
-These read lower than an earlier fit of the same models on half the data, where the
-Gram-negative head reached 0.80 and the hemolysis head 0.77. The test set grew, not the
-error. Scoring that earlier model on the 3,802 Gram-negative sequences the harvest added,
-which it had never seen, gives AUROC 0.699 against its own cross-validated 0.801. On the
-3,678 new hemolysis sequences it gives 0.681 against 0.768. Its high numbers came from a
-narrower distribution. The models here cover that extra chemistry, which matters because
-the candidates being ranked are de novo sequences rather than analogues of anything in
-either set.
+BattleAMP's 2026 holdout puts published AMP classifiers at AUROC 0.70 to 0.75, so these numbers
+sit in a plausible range rather than coming out of a leaky split.
 
-For context, BattleAMP's 2026 holdout puts published AMP classifiers at AUROC 0.70 to 0.75,
-so these sit in a plausible range rather than being the product of a leaky split.
+The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same 5,617
+sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755, ESM-2
+alone 0.764, and the two together 0.786. Embeddings alone lose to the combination in every
+variant we tried: the descriptors state charge and hydrophobicity outright, where a masked
+language model only implies them. We vendor the encoder at float16 under
+`checkpoint/esm2_t12_35M/`, so generation fetches nothing.
 
-The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same
-5,617 sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755,
-ESM-2 alone 0.764, and the two together 0.786. Embeddings alone lose to the combination in
-every variant tried, which says the descriptors carry something the language model does not:
-charge and hydrophobicity are explicit there and only implicit in a masked-language-model
-representation. The encoder is vendored at float16 under `checkpoint/esm2_t12_35M/`, so
-generation fetches nothing.
-
-Predictions are made at `amidated=0`. Most potent DBAASP entries are C-terminally
-amidated and amidation typically buys several-fold potency, but this competition requires
-free termini, so the amidation state is a model input and is held at free acid. Scoring
-otherwise overstates what these designs can do.
+We predict at `amidated=0`. Most potent DBAASP entries are C-terminally amidated and
+amidation typically buys several-fold potency, but this competition requires free termini,
+so we made the amidation state a model input and hold it at free acid.
 
 #### APEX-pathogen
 
-`checkpoint/apex/` vendors four of the eight released APEX-pathogen checkpoints (Wan et al.,
-de la Fuente lab, *Nature Microbiology* 2025, MIT licensed). APEX predicts MIC in µM against
-an 11-pathogen panel, and all 11 are on this competition's 20-strain panel: every Gram-positive
-strain, 6 of the 15 Gram-negative, and 4 of the 8 MDR isolates. It is also the model that lab
-used to score the AMP-Diffusion baseline, and that lab runs Phase 2.
+We vendor four of the eight released APEX-pathogen checkpoints under `checkpoint/apex/` (Wan
+et al., de la Fuente lab, *Nature Microbiology* 2025, MIT licensed). APEX predicts MIC in µM
+against an 11-pathogen panel, and all 11 are on this competition's 20-strain panel: every
+Gram-positive strain, 6 of the 15 Gram-negative, and 4 of the 8 MDR isolates. It is also the
+model that lab used to score the AMP-Diffusion baseline, and that lab runs Phase 2.
 
-Independence is what it adds. On accuracy the two are level. On the 47 HydrAMP peptides
-with prospective wet-lab MIC values, APEX reaches Spearman 0.50 and AUROC 0.80 for active at
-<= 32 µM. The in-house ensemble appears to beat it there, but 32 of those 47 sequences are in
-its training data, so that comparison is leakage. Its honest figure is the grouped-CV AUROC
-of 0.80. The two agree at Spearman 0.69 only, so the ranked lists use a rank blend weighted 55:45
-toward the in-house models, which cover all 20 strains rather than 11 and carry a hemolysis
-head APEX does not have.
+It adds independence rather than accuracy. On the 47 HydrAMP peptides with prospective
+wet-lab MIC values, APEX reaches Spearman 0.50 and AUROC 0.80 for active at <= 32 µM. Our
+own ensemble appears to beat it there, but 32 of those 47 sequences are in APEX's training
+data, so that comparison is leakage. The two agree at Spearman 0.69 only, so we blend ranks
+55:45 toward our own models, which cover all 20 strains rather than 11 and include a
+hemolysis head APEX does not have.
 
 Four checkpoints rank 4,000 peptides at Spearman 0.983 against the full eight, for 81 MB
 instead of 220 MB.
 
-Scoring runs in four stages, spending model compute where the stakes are highest. Four
-cheap heads run over all 300,000 candidates and decide the library, where a within-cell
-ranking only needs to be roughly right. The full per-species ensemble runs over a
-90,000-sequence shortlist. APEX re-ranks the roughly 3,500 candidates that lead any category
-and clear both the strict synthesis rules and the safety gate. The ESM hemolysis head runs
-over those same 3,500, which is where the ranked lists are settled and where each entry
-commits a wet-lab slot.
+We score in four stages, spending model compute where the stakes are highest. Four cheap
+heads run over all 300,000 candidates and decide the library, where a within-cell ranking
+only needs to be roughly right. The full per-species ensemble runs over a 90,000-sequence
+shortlist. APEX re-ranks the roughly 3,500 candidates that lead any category and clear both
+the strict synthesis rules and the safety gate, and the ESM hemolysis head runs over those
+same 3,500, which settles the ranked lists.
 
-The shortlist is taken cell by cell rather than globally, because the high-scoring end of
-the pool is more cationic than the reference set and a global cut would quietly re-shape the
-library. The two score scales are not comparable, so the shortlist's refined scores are
-quantile-mapped back onto the coarse scores of the same candidates, which keeps the better
-ordering without letting an offset promote the whole shortlist as a block.
+We take the shortlist cell by cell rather than globally, because the high-scoring end of the
+pool is more cationic than the reference set and a global cut would quietly re-shape the
+library. The two score scales are not comparable, so we quantile-map the shortlist's refined
+scores back onto the coarse scores of the same candidates, which keeps an offset from
+promoting the whole shortlist as a block.
 
 #### The distilled surrogate
 
 `surrogate:mbc` reproduces MBC-Attention, one of the three surrogates the proposal names for
 its activity family. Running MBC-Attention itself costs 27 minutes per 300,000 candidates
-and pulls in TensorFlow and a vendored model, so it was distilled into the same
-gradient-boosting form as the other heads, fitted on 59,466 sequences spanning the library,
-the training corpus and the reference set. Fidelity against the real model on held-out
-clusters is Spearman 0.801.
+and pulls in TensorFlow and a vendored model, so we distilled it into the same
+gradient-boosting form as our other heads, fitting on 59,466 sequences spanning the library,
+the training corpus and the reference set. It reproduces the real model at Spearman 0.801 on
+held-out clusters.
 
 Measured directly on MBC-Attention at 4,000 sequences per side, this library has a median
 predicted MIC of 19.2 µM against 27.4 µM for real AMPs and 14.5 µM for the HydrAMP baseline.
-Beating the reference set is the within-cell ranking working. Losing to HydrAMP is the
-charge trade described under Selection, taken deliberately.
+Losing to HydrAMP is the charge trade described under Selection, taken deliberately.
 
-The distilled head ranks the library only. The top-100 objectives leave it out. MBC-Attention
-scores poly-glutamate, which cannot be an antimicrobial peptide, at 1.8 µM, and a wet-lab
-slot is too expensive to spend on a model with that failure mode.
+We use the distilled head for the library only and leave it out of the top-100 objectives.
+MBC-Attention scores poly-glutamate, which cannot be an antimicrobial peptide, at 1.8 µM,
+and a wet-lab slot is too expensive to spend on a model with that failure mode.
 
 ### 3. Selection
 
-`src/amp_designer/select.py`. Quotas over the (length, charge, hydrophobic moment) grid
-come from the reference set's own histogram with no reweighting, plus a small floor on
-every occupied cell. The floor matters because Phase 1 measures KL(reference || generated),
-which punishes a missing mode far harder than an over-represented one.
+`src/amp_designer/select.py`. We read quotas over the (length, charge, hydrophobic moment)
+grid straight off the reference set's histogram, with no reweighting, and put a small floor
+under every occupied cell. We add the floor because Phase 1 measures KL(reference ||
+generated), which punishes a missing mode far harder than an over-represented one.
 
-Copying the charge histogram rather than shifting it is the central design choice, and it
-is deliberate. Predicted activity rises steeply with net charge: over a 6,000-sequence
-sample of the reference set, the AMP classifier gives 0.767 to sequences below zero charge
-and 0.980 to those at +8 or above, with predicted MIC falling from 37 µM to 5.8 µM. A
-library tilted cationic therefore scores better on the surrogate-activity family. It scores
-worse on everything else, because charge feeds the conformity score, the KL divergences, the
-Frechet distance, MMD, precision and recall. The HydrAMP baseline shows the size of that
-trade: its mean charge of 4.88 against the reference's 2.59 comes with a KL-charge of 0.68
-and a Frechet distance of 1.71, where a held-out slice of real AMPs scores 0.010 and 0.012.
-Matching the histogram and then taking the best candidates inside each cell collects the
-activity gain without paying the distributional price.
+We copy the charge histogram rather than shifting it, which is the pipeline's largest trade.
+Predicted activity rises steeply with net charge: over a 6,000-sequence sample of the
+reference set, the AMP classifier gives 0.767 to sequences below zero charge and 0.980 to
+those at +8 or above, with predicted MIC falling from 37 µM to 5.8 µM. A cationic library
+therefore scores better on the surrogate-activity family and worse on everything else,
+because charge enters the conformity score, the KL divergences, the Frechet distance, MMD,
+precision and recall. The HydrAMP baseline shows the size of that trade: its mean charge of
+4.88 against the reference's 2.59 comes with a KL-charge of 0.68 and a Frechet distance of
+1.71, where a held-out slice of real AMPs scores 0.010 and 0.012. We match the histogram and
+take the best candidates inside each cell instead, which collects the activity gain without
+paying the distributional price.
 
-Within a cell, candidates are taken one per MinHash cluster per pass, so the library
-spreads over as many distinct families as the quota allows before taking a second member
-of any. Cluster keys are a digest of character codes rather than Python's `hash`, which is
+Within a cell we take one candidate per MinHash cluster per pass, so the library spreads
+over as many distinct families as the quota allows before we take a second member of any. We
+build cluster keys from a digest of character codes rather than Python's `hash`, which is
 salted per process and would break reproducibility.
 
 The quota grid pins length, charge and hydrophobic moment, but nothing pins residue
-composition, and ranking on predicted activity inside a cell pulls the library toward Lys,
-Arg and Leu. A price per residue corrects it: selection maximises
-`quality - composition @ price`, and after each pass the price of an over-produced residue
-rises. Prices only reorder candidates inside a cell, so every quota and therefore every
-property marginal survives untouched.
+composition, and ranking on predicted activity inside a cell pulls us toward Lys, Arg and
+Leu. We correct that with a price per residue: selection maximizes `quality - composition @
+price`, and after each pass we raise the price of any residue we over-produced. The prices
+only reorder candidates inside a cell, so every quota and therefore every property marginal
+survives untouched.
 
-A cell is still wide. Two sequences can share all three bins and sit far apart in
-composition, and a cell filled from one corner reaches less of the reference manifold than
-its quota suggests. Each cell's reference members are therefore k-means clustered, and the
-cell's quota is split across those sub-regions in proportion to how many reference sequences
-each holds: 53 cells become 453 sub-regions, and every sub-quota sums back to its cell
-quota, so the marginals are again untouched. Clipped coverage rose from 0.512 to 0.544 and
-clipped density from 0.580 to 0.621, with recall, precision, conformity, the Frechet
-distance and KL-length all improving, against a composition gap that widened from 0.013 to
-0.017 and an MMD that rose from 0.876 to 0.947. Constraining selection more tightly leaves
-the residue prices less room, which is where that cost comes from.
+Cells are still wide. Two sequences can share all three bins and sit far apart in
+composition, and if we fill a cell from one corner we reach less of the reference manifold
+than its quota suggests. So we k-means cluster each cell's reference members and split the
+cell's quota across those sub-regions in proportion to how many reference sequences each
+holds. That turns 53 cells into 453 sub-regions, each sub-quota summing back to its cell
+quota.
+
+The split buys clipped coverage of 0.544 against 0.512 without it, and clipped density 0.621
+against 0.580, with recall, precision, conformity, the Frechet distance and KL-length all
+better. It costs a composition gap of 0.017 against 0.013 and an MMD of 0.947 against 0.876,
+because constraining selection more tightly leaves the residue prices less room to work.
 
 ### 4. Ranked top-100
 
@@ -246,20 +228,20 @@ the residue prices less room, which is where that cost comes from.
 Cys or Met, no Asp followed by G, A, S, T, C, R, D or N, no Asn-Gly, no QQ or NN, no
 N-terminal Gln, no run over three identical or five beta-sheet-prone residues, at most four
 basic residues in any five-residue window, beta-sheet formers under 42%, net charge at least
-+2, GRAVY at most 1.0, and 11 to 26 residues. Each rule carries a measured cost in diversity,
++2, GRAVY at most 1.0, and 11 to 26 residues. Each rule has a measured cost in diversity,
 listed in that file as how often a published AMP would trip it.
 
-Survivors then face an exact `Levenshtein.ratio` check against every one of the 39,448
-reference sequences, a ban on sharing any exact 10-residue substring with them, a cap of
-three per MinHash cluster, and a rule that no two ranked sequences exceed a Levenshtein
-ratio of 0.65 to each other.
+We then check survivors against every one of the 39,448 reference sequences with an exact
+`Levenshtein.ratio`, drop any that share an exact 10-residue substring with one, cap each
+MinHash cluster at three, and reject any candidate within 0.65 Levenshtein of a sequence we
+have already picked.
 
 The threshold is 0.75 rather than the validator's 0.80 because the proposal states the same
 rule as MMseqs2 alignment identity, and the two are different measures. MMseqs2 reports
 identity over the aligned region, so one exact 10-residue match inside a 25-mer scores 1.0
-however different the rest is. The substring ban closes that without needing an aligner at
-generation time. It costs little: only 3% of ranked candidates carry a shared 10-mer, against 54% of real
-AMPs measured against the rest of the reference set.
+however different the rest is. Banning shared 10-mers closes that gap without making us run
+an aligner at generation time. The cost is small: the rule would drop 3% of our ranked
+candidates and 54% of real AMPs measured against the rest of the reference set.
 
 On that same comparison a held-out slice of real AMPs reaches MMseqs2 identity 0.875 and
 Levenshtein 0.900 against the reference, where these ranked lists sit at 0.60 and 0.67. The
@@ -269,27 +251,26 @@ completely.
 
 The pairwise cap is a hedge rather than a metric. The models separate active from inactive
 far better than they rank among the active, so 25 peptides drawn from a list built on one
-scaffold risk failing together for the same reason. Real AMPs sit at a median pairwise
-ratio of 0.258, so 0.65 blocks near-copies without binding on genuine variety.
+scaffold risk failing together for the same reason. Real AMPs sit at a median pairwise ratio
+of 0.258, so 0.65 blocks near-copies without binding on genuine variety.
 
-One more gate applies before any of this: a candidate whose predicted probability of
-HC50 >= 128 µM falls below 0.50 is dropped from every ranked list. Potency and hemolysis
-both rise with charge and hydrophobicity, so ranking on potency alone walks into the
-hemolytic corner. An earlier build of this pipeline came out at 30% predicted safe against
-a 37% base rate among potent peptides. A gate suits that better than a heavier weight. The
-models rank potency better than they rank hemolysis, and one severely hemolytic peptide
-wastes a wet-lab slot in every category, not only in selectivity.
+One more gate applies before any of this. We drop from every ranked list any candidate whose
+predicted probability of HC50 >= 128 µM falls below 0.50. Potency and hemolysis both rise
+with charge and hydrophobicity, so ranking on potency alone walks into the hemolytic corner.
+We use a gate rather than a heavier weight, because the models rank potency better than
+they rank hemolysis and one severely hemolytic peptide wastes a wet-lab slot in every
+category, not only in selectivity.
 
-Where the in-house ensemble and APEX disagree about a candidate, its blended score is
-reduced. Taking the top of a noisy score over-represents candidates whose error happened to
-run favourable, and a peptide only one of two independent models likes is the usual shape of
+Where our ensemble and APEX disagree about a candidate, we reduce its blended score. Taking
+the top of a noisy score over-represents candidates whose error happened to run favorably,
+and a peptide that only one of two independent models rates highly is the usual shape of
 that. With 25 peptides drawn at random and averaged, shrinking those optimistic outliers is
 worth more than the few genuine finds it costs.
 
 ## Phase-1 metrics
 
-Measured with `seqme` 0.5.1 against the challenge's own reference antibacterial set, with a
-held-out slice of that set as the realism ceiling. The baseline column is the HydrAMP
+We measure with `seqme` 0.5.1 against the challenge's own reference antibacterial set, using
+a held-out slice of that set as the realism ceiling. The baseline column is the HydrAMP
 library shipped in its starter kit. Embeddings are ESM-2 t6_8M, one of the two model
 families the competition names, at 4,000 sequences per side.
 
@@ -318,23 +299,22 @@ families the competition names, at 4,000 sequences per side.
 The conformity score and the diversity land on the held-out reference set's own value, so
 the library is as realistic as real AMPs are while every sequence stays novel by exact
 match. Recall, clipped density and clipped coverage are four to five times the baseline's,
-because the quota grid covers the reference distribution rather than occupying one corner
-of it, and the KL divergences follow for the same reason.
+because the quota grid covers the reference distribution rather than occupying one corner of
+it, and the KL divergences follow for the same reason.
 
-FKEA is left out of the table. At 4,000 sequences it sits near its sample-size ceiling for
-every library scored, which is the instability the seqme authors report, so it separates
-nothing here.
+We leave FKEA out of the table. At 4,000 sequences it sits near its sample-size ceiling for
+every library we scored, which is the instability the seqme authors report, so it separates
+nothing.
 
-Repeating the whole table with a 1-mer and 2-mer frequency embedding in place of ESM-2
-changes no ranking. The one metric that moves is precision, which reads 0.876 against the
-baseline's 0.918 under the k-mer embedding and 0.893 against 0.648 under ESM-2. The k-mer
-reading is an artifact: the library's novelty term penalises reuse of reference 6-mers, so
-a k-mer embedding measures the very thing that term suppresses.
+We repeated the table with a 1-mer and 2-mer frequency embedding in place of ESM-2. No
+ranking changed except precision, which reads 0.876 against the baseline's 0.918 there. That
+reading is an artifact: our novelty term penalizes reuse of reference 6-mers, so a k-mer
+embedding measures what that term suppresses.
 
 ## The ranked lists
 
-All five carry 100 sequences, every one present in the library, every one predicted active
-at 16 µM or below, none sharing an exact 10-mer with the reference set, none above a
+All five lists hold 100 sequences, every one present in the library, every one predicted
+active at 16 µM or below, none sharing an exact 10-mer with the reference set, none above a
 Levenshtein ratio of 0.75 to it, and no pair above 0.65 to each other.
 
 | list | predicted MIC50 | P(HC50 >= 128) | worst entry | predicted window | envelope |
@@ -345,58 +325,45 @@ Levenshtein ratio of 0.75 to it, and no pair above 0.65 to each other.
 | MDR | 7.40 µM | 0.63 | 0.50 | 12.0 | 0.81 |
 | selectivity | 8.06 µM | 0.64 | 0.50 | 12.7 | 0.89 |
 
-Those hemolysis figures come from the descriptor head, while selection used the ESM head,
-so the table is an independent second opinion on the lists rather than a restatement of
-what chose them.
+Those hemolysis figures come from the descriptor head while selection used the ESM head, so
+they are an independent check rather than a restatement of the scores we selected on.
 
 The five lists share between 28 and 71 sequences pairwise and together cover 241 distinct
-peptides across the 500 slots, so ranking separately per category is not redundant. The
-selectivity list has both the highest predicted window and the highest hemolytic safety,
-which is what its objective asks for.
-
-Two changes were made after measuring them rather than assuming them. Enlarging the
-shortlist from 40,000 to 90,000 paid for raising the hemolysis gate from 0.35 to 0.50, and
-retraining on the doubled dataset changed which candidates the gate admits. Scoring the
-lists from before and after with one set of models, mean P(HC50 >= 128) rises from 0.40 to
-0.61, the worst entry in a list from 0.17 to 0.50, and the predicted safety window by 22 to
-33 percent, for 7 percent of predicted potency. The earlier models were admitting peptides
-that better-informed models consider hemolytic.
+peptides across the 500 slots. The selectivity list has both the highest predicted window
+and the highest hemolytic safety.
 
 ## What the models get wrong
 
-Nine peptides with published free-termini MIC and human-erythrocyte HC50, spanning
-selectivity indices from 15 to 111, were scored as positive controls alongside poly-Ala,
-poly-Glu and a scrambled sequence. All nine outrank all three decoys, and the MIC
-predictions land within about a five-fold band of the measured values.
+We scored nine peptides with published free-termini MIC and human-erythrocyte HC50, spanning
+selectivity indices from 15 to 111, against poly-Ala, poly-Glu and a scrambled sequence. All
+nine outrank all three decoys, and our MIC predictions land within about a five-fold band of
+the measured values.
 
-The hemolysis head remains the weak one even after the ESM-2 rebuild. Over those nine the
-predicted safety window correlates with the measured index at Spearman 0.25, and the single
-most selective control, dhvar5 (`LLLFLLKKRKKRKY`, measured HC50 120 µM), is predicted at
-50 µM. Its N-terminal `LLLFLL`
-block is also long enough to trip the six-residue beta-sheet run rule, so this pipeline
-would have excluded it outright. Short cationic peptides that carry their hydrophobicity in
-one contiguous block are the failure case.
+Our hemolysis head remains the weak one even after the ESM-2 rebuild. Over those nine its
+predicted safety window correlates with the measured index at Spearman 0.25, and we predict
+50 µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
+Its N-terminal `LLLFLL` block is also long enough to trip the six-residue beta-sheet run
+rule, so this pipeline would have excluded it outright. Short cationic peptides carrying
+their hydrophobicity in one contiguous block are the failure case. That 0.25 understates the
+head, because we chose those nine for high selectivity and the range is narrow. Across the
+full range it reaches AUROC 0.786.
 
 The ranked lists are also concentrated in one structural class. Every entry is a cationic
-amphipathic sequence of the helix-forming kind: across the selectivity list the residue
-counts are Lys 594, Arg 247, Val 230, Leu 218, Trp 168, with no Cys and no Met. That is the
-best-validated AMP class and the one the training data is densest in, and since 25 peptides
-are drawn at random and averaged, concentrating on the highest-expected-value class is the
-right move for the mean. It does mean a systematic failure of that class would take the
-whole draw with it. Amphipathic beta-sheet designs were the obvious second class to include. The beta-sheet
-hydrophobic moment was tested against measured HC50 on 465 potent peptides, and the
-relationship came out weak and not monotonic, so nothing was forced on that basis.
+amphipathic sequence of the helix-forming kind, and across the selectivity list the residue
+counts are Lys 481, Arg 276, Ile 189, Leu 162, Val 160 and Trp 136, with no Cys and no Met.
+That is the best-validated AMP class and the one our training data is densest in, and with
+25 peptides drawn at random and averaged, the class with the highest expected value is the
+right bet for the mean. A systematic failure of it would take the whole draw, so we spread
+each list of 100 over 99 or 100 distinct MinHash clusters with no pair above a 0.65
+Levenshtein ratio.
 
-One property was not designed and is worth noting: Arg makes up 29% of the cationic
-residues across the ranked lists, which is inside the 0 to 50% band where the measured
-safety window peaks. That came out of the envelope's Arg-share term and the fitted models
-rather than being set.
+Amphipathic beta-sheet designs were the obvious second class to add. We tested the
+beta-sheet hydrophobic moment against measured HC50 on 465 potent peptides, found the
+relationship weak and not monotonic, and forced nothing on that basis.
 
-Two things keep the hemolysis result in proportion. Those nine were selected for high selectivity, so the
-range is narrow and a rank correlation across it means little. Measured across the full
-range, the hemolysis head reaches AUROC 0.786. And the ranked lists are spread across at least 100 distinct clusters with
-no pair above a 0.65 Levenshtein ratio, which is the hedge against exactly this kind of
-systematic model error.
+One property came out of the envelope's Arg-share term and the fitted models rather than a
+rule we set. Arg makes up 43% of the cationic residues across the ranked lists, inside the 0
+to 50% band where the measured safety window peaks.
 
 ## Reproducing the checkpoints
 
@@ -422,8 +389,8 @@ entry point does not.
 
 ## Training data
 
-Every source is public. `data/training/README.md` lists each one with its licence, row
-count, and what it contributes. No proprietary or non-public data is used.
+Every source is public. `data/training/README.md` lists each one with its license, row
+count, and what it contributes.
 
 ## Layout
 
@@ -455,9 +422,9 @@ scripts/         the challenge validator, copied verbatim
 
 ## Use of AI assistants
 
-Per the NeurIPS Main Track Handbook, this is disclosed: the code in this repository was
-written with Claude (Anthropic) under human direction. The method design, the data
-sources, and the submitted content are the author's responsibility.
+The NeurIPS Main Track Handbook requires this disclosure. The code in this repository was
+written with Claude (Anthropic) under human direction, and the method design, the data
+sources and the submitted content are the author's responsibility.
 
 ## License
 
