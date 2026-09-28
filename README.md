@@ -228,40 +228,48 @@ worth more than the few genuine finds it costs.
 
 ## Phase-1 metrics
 
-Measured with `seqme` 0.5.1 at 10,000 sequences per side, against the challenge's own
-reference antibacterial set, with a held-out slice of that set as the realism ceiling.
-The baseline column is the HydrAMP library shipped in its starter kit.
+Measured with `seqme` 0.5.1 against the challenge's own reference antibacterial set, with a
+held-out slice of that set as the realism ceiling. The baseline column is the HydrAMP
+library shipped in its starter kit. Embeddings are ESM-2 t6_8M, one of the two model
+families the competition names, at 4,000 sequences per side.
 
 | metric | want | this library | HydrAMP baseline | real AMPs |
 |---|---|---|---|---|
 | Uniqueness | high | 1.000 | 1.000 | 1.000 |
-| Diversity | high | **0.854** | 0.806 | 0.855 |
-| FKEA (effective modes) | high | **78.5** | 37.7 | 58.9 |
+| Diversity | high | **0.854** | 0.805 | 0.855 |
 | Novelty (exact) | high | **1.000** | 1.000 | 0.000 |
-| Authenticity | high | 0.782 | 0.814 | 0.438 |
-| FBD vs AMPs | low | **0.062** | 1.650 | 0.003 |
-| FBD vs generic peptides | low | **0.614** | 2.554 | 0.499 |
-| MMD vs AMPs | low | **0.045** | 10.657 | 0.005 |
-| Precision | high | 0.876 | 0.918 | 0.952 |
-| Recall | high | **0.849** | 0.477 | 0.949 |
-| Clipped density | high | **0.566** | 0.217 | 1.000 |
-| Clipped coverage | high | **0.445** | 0.139 | 1.000 |
-| Conformity score | high | **0.504** | 0.404 | 0.499 |
-| KL charge | low | **0.216** | 0.752 | 0.011 |
-| KL hydrophobic moment | low | **0.002** | 0.074 | 0.000 |
-| KL GRAVY | low | **0.024** | 0.259 | 0.001 |
-| KL length | low | **0.077** | 407.1 | 0.003 |
-| mean charge | match | 2.72 | 4.86 | 2.59 |
-| mean length | match | 18.4 | 20.8 | 18.7 |
-| composition L2 gap | low | **0.014** | 0.255 | 0.002 |
+| Authenticity | high | 0.774 | 0.914 | 0.550 |
+| FBD vs AMPs | low | **0.491** | 7.859 | 0.053 |
+| FBD vs generic peptides | low | **4.042** | 13.201 | 3.116 |
+| MMD vs AMPs | low | **0.955** | 48.717 | 0.031 |
+| Precision | high | **0.893** | 0.648 | 0.947 |
+| Recall | high | **0.831** | 0.402 | 0.937 |
+| Clipped density | high | **0.600** | 0.105 | 1.000 |
+| Clipped coverage | high | **0.514** | 0.129 | 1.000 |
+| Conformity score | high | **0.503** | 0.408 | 0.496 |
+| KL charge | low | **0.071** | 0.559 | 0.009 |
+| KL hydrophobic moment | low | **0.002** | 0.066 | 0.000 |
+| KL GRAVY | low | **0.018** | 0.223 | 0.000 |
+| KL length | low | **0.078** | 257.5 | 0.009 |
+| mean charge | match | 2.73 | 4.88 | 2.63 |
+| mean length | match | 18.6 | 20.8 | 18.7 |
+| composition L2 gap | low | **0.015** | 0.256 | 0.005 |
 
-The conformity score and the diversity both land on the held-out reference set's own value,
-and FKEA lands above it, so the library is as realistic as real AMPs are while covering more
-of the space and while every sequence stays novel by exact match.
+The conformity score and the diversity land on the held-out reference set's own value, so
+the library is as realistic as real AMPs are while every sequence stays novel by exact
+match. Recall, clipped density and clipped coverage are four to five times the baseline's,
+because the quota grid covers the reference distribution rather than occupying one corner
+of it, and the KL divergences follow for the same reason.
 
-HydrAMP wins precision, at 0.918 against 0.876, by occupying a narrow part of the
-distribution. It pays for that with recall of 0.477 against 0.849 and a KL length of 407
-against 0.077: its library misses most of the reference distribution rather than covering it.
+FKEA is left out of the table. At 4,000 sequences it sits near its sample-size ceiling for
+every library scored, which is the instability the seqme authors report, so it separates
+nothing here.
+
+Repeating the whole table with a 1-mer and 2-mer frequency embedding in place of ESM-2
+changes no ranking. The one metric that moves is precision, which reads 0.876 against the
+baseline's 0.918 under the k-mer embedding and 0.893 against 0.648 under ESM-2. The k-mer
+reading is an artifact: the library's novelty term penalises reuse of reference 6-mers, so
+a k-mer embedding measures the very thing that term suppresses.
 
 ## What the models get wrong
 
