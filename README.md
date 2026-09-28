@@ -120,7 +120,7 @@ numbers match what the literature reports on a clean split.
 
 The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same 5,617
 sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755, ESM-2
-alone 0.764, and the two together 0.786. Embeddings alone lose to the combination, because
+alone 0.764, and the two together 0.786. Embeddings alone lose to the combination because
 the descriptors state charge and hydrophobicity where a masked language model only implies
 them. We vendor the encoder at float16 under `checkpoint/esm2_t12_35M/`, so generation
 fetches nothing.
@@ -336,7 +336,7 @@ predicted safety window correlates with the measured index at Spearman 0.25, and
 50 µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
 This pipeline would have excluded it because its N-terminal `LLLFLL` block trips the
 six-residue beta-sheet run rule. Short cationic peptides that carry their hydrophobicity in
-one contiguous block are where the head fails. That 0.25 understates the head, because we
+one contiguous block are where the head fails. That 0.25 understates the head because we
 chose those peptides for high selectivity and their measured indices span a narrow range.
 Across the full range the head reaches AUROC 0.786.
 
