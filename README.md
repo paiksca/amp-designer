@@ -64,10 +64,10 @@ an exact 10-residue substring with them, and a cap of 0.65 on the Levenshtein ra
 any two ranked sequences.
 
 We vendor APEX-pathogen because it predicts micromolar MIC for 11 of the 20 panel strains
-and comes from the laboratory running Phase 2. We rank-blend it with our ensembles at 45%
-and penalize candidates APEX and our ensembles disagree about. We re-estimate hemolysis with
-an ESM-2 head over the few thousand candidates that reach the lists because it is our
-weakest prediction and the selectivity category depends on it.
+and comes from the laboratory running Phase 2. We rank-blend APEX with our ensembles at 45%
+and penalize candidates where they disagree. We re-estimate hemolysis with an ESM-2 head
+over the few thousand candidates that reach the lists because it is our weakest prediction
+and the selectivity category depends on it.
 
 We apply no manual curation.
 
