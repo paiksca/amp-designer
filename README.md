@@ -330,6 +330,12 @@ The five lists share between 31 and 64 sequences pairwise and together cover 225
 peptides across the 500 slots. The selectivity list has both the highest predicted window
 and the highest hemolytic safety.
 
+One draw of 25 peptides is scored in all five categories, so only the list a validator reads
+is assayed. `generate` and `generate_broad_spectrum` produce the same list, so that is the
+one tested whichever validator runs. It sits within 4% of the best of the five on mean
+predicted MIC50, safety window and hemolytic safety, so ranking per category costs nothing
+when a single list is read.
+
 ## What the models get wrong
 
 We scored nine peptides with published free-termini MIC and human-erythrocyte HC50, spanning
