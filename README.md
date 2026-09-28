@@ -60,9 +60,17 @@ double weight because 15 of the 20 panel strains are Gram-negative; hemolysis en
 constraint rather than an objective because HC50 is reported only up to 128 µM, past which
 being less hemolytic earns nothing; and synthesis risk is penalised directly because a
 peptide that fails synthesis is never replaced and enters the mean at its worst value.
-Every entry clears a strict synthesis rule set, an exact `Levenshtein.ratio <= 0.75` check
-against all 39,448 reference sequences, and a cap of three per sequence cluster, so a
-single mistaken scaffold cannot take the whole draw down with it.
+Every entry clears a strict synthesis rule set, a gate on predicted hemolysis, an exact
+`Levenshtein.ratio <= 0.75` check against all 39,448 reference sequences, a ban on sharing
+any exact 10-residue substring with them, and a rule that no two ranked sequences exceed a
+Levenshtein ratio of 0.65 to each other, so a single mistaken scaffold cannot take the
+whole draw down with it.
+
+Ranking is done five times, once per Phase-2 category, because the categories score
+different slices of the 20-strain panel and the list that wins one does not win another.
+APEX-pathogen, which predicts micromolar MIC for 11 of those 20 strains and comes from the
+laboratory running Phase 2, is vendored and rank-blended with the in-house ensembles at
+45%, with a penalty on how far the two disagree.
 
 No manual curation or hand-selection is applied at any stage.
 
@@ -285,7 +293,22 @@ block is also long enough to trip the six-residue beta-sheet run rule, so this p
 would have excluded it outright. Short cationic peptides that carry their hydrophobicity in
 one contiguous block are the failure case.
 
-Two things keep that in proportion. Those nine were selected for high selectivity, so the
+The ranked lists are also concentrated in one structural class. Every entry is a cationic
+amphipathic sequence of the helix-forming kind: across the selectivity list the residue
+counts are Lys 594, Arg 247, Val 230, Leu 218, Trp 168, with no Cys and no Met. That is the
+best-validated AMP class and the one the training data is densest in, and since 25 peptides
+are drawn at random and averaged, concentrating on the highest-expected-value class is the
+right move for the mean. It does mean a systematic failure of that class would take the
+whole draw with it. Amphipathic beta-sheet designs were the obvious second class to include;
+the beta-sheet hydrophobic moment was tested against measured HC50 on 465 potent peptides
+and the relationship was weak and not monotonic, so nothing was forced on that basis.
+
+One property was not designed and is worth noting: Arg makes up 29% of the cationic
+residues across the ranked lists, which is inside the 0 to 50% band where the measured
+safety window peaks. That came out of the envelope's Arg-share term and the fitted models
+rather than being set.
+
+Two things keep the hemolysis result in proportion. Those nine were selected for high selectivity, so the
 range is narrow and a rank correlation across it means little; measured across the full
 range, the hemolysis head reaches AUROC 0.768 and the blend with the envelope 0.737 on the
 potent subset. And the ranked lists are spread across at least 100 distinct clusters with
