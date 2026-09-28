@@ -105,20 +105,29 @@ ungrouped split reports roughly twice the real accuracy.
 
 | head | n | Spearman | AUROC |
 |---|---|---|---|
-| MIC, Gram-negative panel | 8,351 | 0.60 | 0.80 (active at <= 16 µM) |
-| MIC, Gram-positive panel | 4,268 | 0.54 | 0.77 |
-| MIC, *E. coli* | 7,958 | 0.59 | 0.79 |
-| MIC, *P. aeruginosa* | 2,992 | 0.59 | 0.80 |
-| MIC, *S. aureus* | 4,093 | 0.52 | 0.77 |
-| MIC, *K. pneumoniae* | 1,321 | 0.53 | 0.76 |
-| MIC, *A. baumannii* | 1,131 | 0.50 | 0.77 |
-| MIC, *E. faecalis* | 980 | 0.57 | 0.79 |
-| MIC, *B. subtilis* | 1,030 | 0.45 | 0.77 |
-| log2 HC50 | 1,957 | 0.51 | 0.77 (HC50 >= 128 µM) |
+| MIC, Gram-negative panel | 13,269 | 0.55 | 0.78 (active at <= 16 µM) |
+| MIC, Gram-positive panel | 10,278 | 0.48 | 0.74 |
+| MIC, *E. coli* | 12,220 | 0.54 | 0.77 |
+| MIC, *P. aeruginosa* | 7,132 | 0.48 | 0.74 |
+| MIC, *S. aureus* | 9,614 | 0.48 | 0.75 |
+| MIC, *K. pneumoniae* | 3,060 | 0.48 | 0.75 |
+| MIC, *A. baumannii* | 2,591 | 0.56 | 0.78 |
+| MIC, *E. faecalis* | 2,161 | 0.49 | 0.75 |
+| MIC, *B. subtilis* | 3,058 | 0.51 | 0.77 |
+| log2 HC50 | 5,617 | 0.42 | 0.76 (HC50 >= 128 µM) |
 | AMP classifier | 30,000 | | 0.92 |
 
-For context, BattleAMP's 2026 holdout puts published AMP classifiers at AUROC 0.70-0.75,
-so these are in a plausible range rather than the product of a leaky split.
+These read lower than an earlier fit of the same models on half the data, where the
+Gram-negative head reached 0.80 and the hemolysis head 0.77. The test set grew, not the
+error. Scoring that earlier model on the 3,802 Gram-negative sequences the harvest added,
+which it had never seen, gives AUROC 0.699 against its own cross-validated 0.801; on the
+3,678 new hemolysis sequences it gives 0.681 against 0.768. Its high numbers came from a
+narrower distribution. The models here cover that extra chemistry, which matters because
+the candidates being ranked are de novo sequences rather than analogues of anything in
+either set.
+
+For context, BattleAMP's 2026 holdout puts published AMP classifiers at AUROC 0.70 to 0.75,
+so these sit in a plausible range rather than being the product of a leaky split.
 
 Predictions are made at `amidated=0`. Most potent DBAASP entries are C-terminally
 amidated and amidation typically buys several-fold potency, but this competition requires

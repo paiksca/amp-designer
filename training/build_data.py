@@ -203,6 +203,45 @@ def mic_table() -> pd.DataFrame:
     ].reset_index(drop=True)
 
 
+def dbaasp_harvest() -> pd.DataFrame:
+    """MIC rows from a direct harvest of the DBAASP detail API.
+
+    The DBAASP slice redistributed inside battleamp-snakemake is an older snapshot.
+    A fresh harvest of all 25,542 records adds 5,134 sequences with MIC that the
+    snapshot does not carry, 4,218 of them on panel species, which is a 65%
+    increase over the assembled table. `work/data/dbaasp/harvest.py` fetches the
+    records and `parse.py` flattens them; set `AMP_DBAASP` to the flat CSV.
+    """
+    path = Path(
+        os.environ.get(
+            "AMP_DBAASP", REPO.parent / "work" / "data" / "dbaasp" / "dbaasp_flat.csv"
+        )
+    )
+    if not path.exists():
+        return pd.DataFrame(
+            columns=["sequence", "amidated", "targetSpecies", "species", "gram",
+                     "mic_uM", "censored"]
+        )
+    df = pd.read_csv(path)
+    df = df[df["mic_uM"].notna()].copy()
+    df["sequence"] = df["sequence"].astype(str).str.upper().str.strip()
+    ok = df["sequence"].map(lambda s: bool(s) and not (set(s) - AA))
+    df = df[ok]
+    df = df[df["sequence"].str.len().between(MIN_LEN, MAX_LEN)]
+    df = df[df["mic_uM"].between(0.01, 4096)]
+
+    df["amidated"] = (
+        df["c_term"].fillna("").astype(str).str.contains("AMD").astype(int)
+    )
+    df["targetSpecies"] = df["species"].astype(str)
+    df["species"] = df["targetSpecies"].str.split().str[:2].str.join(" ")
+    df["gram"] = df["species"].map(_gram_of)
+    df["censored"] = df["raw_conc"].astype(str).str.startswith(">")
+    return df[
+        ["sequence", "amidated", "targetSpecies", "species", "gram", "mic_uM", "censored"]
+    ].reset_index(drop=True)
+
+
 def grampa_mic() -> pd.DataFrame:
     """HydrAMP's shipped GRAMPA slice: log10(MIC / µM) against E. coli."""
     df = pd.read_csv(HYDRA / "data" / "training" / "mic_data.csv")
@@ -255,7 +294,7 @@ def build(verbose: bool = True) -> dict:
     (OUT / "challenge_reference.txt").write_text("\n".join(ref))
     manifest["challenge_reference"] = len(ref)
 
-    mic = pd.concat([mic_table(), grampa_mic()], ignore_index=True)
+    mic = pd.concat([mic_table(), dbaasp_harvest(), grampa_mic()], ignore_index=True)
     mic.to_csv(OUT / "mic.csv.gz", index=False)
     manifest["mic_rows"] = int(len(mic))
     manifest["mic_sequences"] = int(mic["sequence"].nunique())

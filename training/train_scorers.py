@@ -182,11 +182,37 @@ def hemolysis_target() -> pd.DataFrame:
     )
     frames.append(hyd[["sequence", "hc50_uM"]])
 
+    # Human-erythrocyte HC50 from the direct DBAASP harvest. It adds 370 sequences
+    # the HemoPI2 release does not carry, and the two agree at Spearman 0.916 on
+    # the 1,306 they share, which is the check that they are measuring the same
+    # thing before they are pooled.
+    dbaasp = Path(
+        os.environ.get(
+            "AMP_DBAASP", REPO.parent / "work" / "data" / "dbaasp" / "dbaasp_flat.csv"
+        )
+    )
+    if dbaasp.exists():
+        d = pd.read_csv(dbaasp)
+        d = d[d["human_hc50_uM"].notna()].drop_duplicates("sequence")
+        # A censored value is a lower bound. One written ">150" is safely above the
+        # 128 µM ceiling and can be clipped to it; one written ">100" could be
+        # anywhere above 100 and is dropped rather than guessed.
+        ambiguous = d["hc50_censored"] & (d["human_hc50_uM"] < HC50_CEILING)
+        d = d[~ambiguous].copy()
+        d.loc[d["hc50_censored"], "human_hc50_uM"] = HC50_CEILING
+        frames.append(
+            d[["sequence", "human_hc50_uM"]].rename(
+                columns={"human_hc50_uM": "hc50_uM"}
+            )
+        )
+
     df = pd.concat(frames, ignore_index=True)
     df["sequence"] = df["sequence"].astype(str).str.upper().str.strip()
     aa = set("ACDEFGHIKLMNPQRSTVWY")
     df = df[df["sequence"].map(lambda s: bool(s) and not (set(s) - aa))]
-    df = df[df["sequence"].str.len().between(6, 60)]
+    # The descriptor encoder is sized to the competition's 50-residue ceiling, and
+    # anything outside 8 to 50 is out of scope for this submission anyway.
+    df = df[df["sequence"].str.len().between(8, 50)]
     df = df[df["hc50_uM"].notna() & (df["hc50_uM"] > 0)]
     df["log2_hc50"] = np.log2(df["hc50_uM"])
     agg = df.groupby("sequence", as_index=False).agg(

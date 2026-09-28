@@ -24,7 +24,7 @@ MIC_CEILING_LOG2 = 6.0   # log2(64 µM)
 # right instrument rather than a larger weight, because the models rank potency far
 # better than they rank hemolysis, and one severely hemolytic peptide costs a
 # wet-lab slot in every category, not only in selectivity.
-SAFETY_FLOOR = 0.35
+SAFETY_FLOOR = 0.50
 
 # The Phase-2 panel: 15 Gram-negative strains and 5 Gram-positive.
 PANEL_COUNTS = {

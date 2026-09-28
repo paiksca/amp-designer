@@ -67,7 +67,7 @@ LONG_SUBSTRING = 10
 # four times as much and only change the ranked list, so they run on the shortlist.
 COARSE_TARGETS = ("amp:clf", "mic:gram_neg", "hem:safe")
 # Shortlist size as a multiple of the library, spread across cells by quota share.
-SHORTLIST_SIZE = 40_000
+SHORTLIST_SIZE = 90_000
 # How many leading candidates per category go to APEX. It costs about a second per
 # hundred sequences, so the pool is kept to the region where the ranked list is
 # actually decided.
