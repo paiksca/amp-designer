@@ -1,6 +1,6 @@
 # Training data disclosure
 
-Every source is public, so the competition's data rules ask for no additional release.
+All sources are public, so the competition's data rules ask for no additional release.
 `build_data.py` assembles the files in this directory from the repositories listed below.
 Re-run it to rebuild them.
 
@@ -18,10 +18,10 @@ ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed 
 `build_data.py` to produce it.
 
 HemoPI2 is GPL-3.0 licensed, so we read its hemolysis data at training time and keep it out
-of this repository. Its HC50 values come from
-DBAASP and Hemolytik, both public. We pool them with the direct DBAASP harvest, which adds
-370 sequences HemoPI2 does not have. The two agree at Spearman 0.916 on the 1,306 they
-share, which is our check that they measure the same thing.
+of this repository. Its HC50 values come from DBAASP and Hemolytik, both public. We pool
+them with the direct DBAASP harvest, which adds 370 sequences HemoPI2 does not have. The two
+agree at Spearman 0.916 on the 1,306 they share, which is our check that they measure the
+same thing.
 
 The direct harvest is why the MIC table is 65% larger in distinct sequences than the
 redistributed snapshot: 12,993 against 7,872, with 4,218 of the new ones on panel species.
@@ -55,8 +55,8 @@ data.
 We measured both, and both lowered accuracy.
 
 **Potency measures are not interchangeable.** A peptide's `targetActivities` list mixes MIC
-with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are statistics over a
-panel where MIC is a per-strain value. In a 4,000-record sample the split was 22,803 MIC
+with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are statistics over
+a panel where MIC is a per-strain value. In a 4,000-record sample the split was 22,803 MIC
 against roughly 6,900 of everything else. Pooling them dropped the Gram-negative model from
 AUROC 0.801 to 0.750 even though it added 59% more sequences. `dbaasp_harvest.py` keeps
 `activityMeasureGroup == "MIC"` and nothing else.
@@ -65,7 +65,8 @@ AUROC 0.801 to 0.750 even though it added 59% more sequences. `dbaasp_harvest.py
 recorded as ">100 µM" or similar, and dropping them throws away the safe class while
 treating them as measurements understates safety. We clip values censored at or above the
 competition's 128 µM ceiling to the ceiling, where the scale ends anyway, and drop values
-censored below it as ambiguous. That leaves 5,747 sequences with a usable hemolysis label against 1,957 from HemoPI2 alone.
+censored below it as ambiguous. That leaves 5,747 sequences with a usable hemolysis label
+against 1,957 from HemoPI2 alone.
 
 We keep only human-erythrocyte hemolysis records. Sheep, rabbit and horse red cells differ
 in sensitivity, and Phase 2 measures human cells.
