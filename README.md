@@ -418,6 +418,8 @@ scripts/         the challenge validator, copied verbatim
 | `--top-k` | 100 | ranked list size |
 | `--length` | 50 | maximum residue count |
 | `--seed` | 42 | random seed |
+| `--category` | from the script name | which Phase-2 objective ranks the top-k |
+| `--out-dir` | named after the script | where to write the two FASTA files |
 
 ## Use of AI assistants
 

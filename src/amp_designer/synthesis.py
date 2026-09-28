@@ -101,7 +101,7 @@ def library_flags(sequences: list[str]) -> np.ndarray:
 
 
 def strict_flags(sequences: list[str]) -> np.ndarray:
-    """Every rule, for candidates that may actually be synthesised."""
+    """Every rule, for candidates that may actually be synthesized."""
     charge = features.net_charge(sequences)
     idx, lengths = features.encode(sequences)
     comp = features.composition(idx, lengths)
