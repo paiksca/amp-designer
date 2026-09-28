@@ -14,6 +14,8 @@ dependencies = [
     "scikit-learn>=1.5,<2",
     "scipy>=1.13,<2",
     "rapidfuzz>=3.9,<4",
+    "transformers>=4.40,<6",
+    "safetensors>=0.4,<1",
     "levenshtein>=0.25,<1",
 ]
 

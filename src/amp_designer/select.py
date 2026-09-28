@@ -113,6 +113,8 @@ def select(
     cluster: np.ndarray,
     total: int,
     forced: list[int] | None = None,
+    sub_quotas: dict | None = None,
+    sub_assign: np.ndarray | None = None,
 ) -> np.ndarray:
     """Pick `total` indices, filling each quota cell cluster-first by quality.
 
@@ -147,6 +149,38 @@ def select(
         pool = by_cell.get(cell)
         if want <= 0 or not pool:
             continue
+
+        # With sub-quotas the cell's allowance is split across regions of the
+        # reference inside it, so the library reaches across the cell rather than
+        # filling it from one corner. Every sub-quota sums back to the cell quota,
+        # so the marginals are unchanged.
+        budgets = sub_quotas.get(cell) if sub_quotas else None
+        if budgets is not None and sub_assign is not None:
+            for sub, sub_want in enumerate(budgets):
+                if sub_want <= 0:
+                    continue
+                members = [i for i in pool if int(sub_assign[i]) == sub]
+                if not members:
+                    continue
+                got_sub = sum(
+                    1 for i in chosen if cell_of[i] == cell and int(sub_assign[i]) == sub
+                )
+                local_sub: dict[int, int] = {}
+                for r in range(1, max_rounds + 1):
+                    if got_sub >= sub_want:
+                        break
+                    for i in members:
+                        if got_sub >= sub_want:
+                            break
+                        if taken[i]:
+                            continue
+                        c = int(cluster[i])
+                        if local_sub.get(c, 0) >= r:
+                            continue
+                        local_sub[c] = local_sub.get(c, 0) + 1
+                        take(i)
+                        got_sub += 1
+
         got = sum(1 for i in chosen if cell_of[i] == cell)
         local: dict[int, int] = {}
         for r in range(1, max_rounds + 1):
@@ -212,6 +246,8 @@ def select_matching_composition(
     total: int,
     target: np.ndarray,
     forced: list[int] | None = None,
+    sub_quotas: dict | None = None,
+    sub_assign: np.ndarray | None = None,
     passes: int = 8,
     step: float = 14.0,
     tolerance: float = 0.012,
@@ -234,14 +270,15 @@ def select_matching_composition(
     comp = features.composition(idx, lengths)
     prices = np.zeros(20, dtype=np.float64)
 
-    chosen = select(sequences, quality, quotas, cluster, total, forced=forced)
+    kw = dict(forced=forced, sub_quotas=sub_quotas, sub_assign=sub_assign)
+    chosen = select(sequences, quality, quotas, cluster, total, **kw)
     best, best_gap = chosen, float(np.linalg.norm(comp[chosen].mean(axis=0) - target))
     for _ in range(passes):
         if best_gap < tolerance:
             break
         prices += step * (comp[chosen].mean(axis=0) - target)
         adjusted = (quality - comp @ prices).astype(np.float32)
-        chosen = select(sequences, adjusted, quotas, cluster, total, forced=forced)
+        chosen = select(sequences, adjusted, quotas, cluster, total, **kw)
         gap = float(np.linalg.norm(comp[chosen].mean(axis=0) - target))
         if gap < best_gap:
             best, best_gap = chosen, gap
@@ -251,3 +288,87 @@ def select_matching_composition(
 def mean_composition(sequences: list[str]) -> np.ndarray:
     idx, lengths = features.encode(sequences)
     return features.composition(idx, lengths).mean(axis=0)
+
+
+def embedding_features(sequences: list[str]) -> np.ndarray:
+    """The representation the sub-quota clusters on: composition and dipeptides.
+
+    seqme's own tutorial shows that with a small protein language model most of
+    the Frechet distance is carried by composition, so clustering here targets the
+    same axis the distributional metrics read.
+    """
+    idx, lengths = features.encode(sequences)
+    comp = features.composition(idx, lengths)
+    di = features.kmer_counts(sequences, k=2)
+    return np.hstack([comp * 4.0, di]).astype(np.float32)
+
+
+def subcluster_quotas(
+    reference: list[str],
+    quotas: dict[tuple[int, int, int], int],
+    per_cluster: int = 40,
+    max_sub: int = 12,
+    seed: int = 0,
+) -> tuple[dict, dict]:
+    """Split each property cell's quota across sub-regions of the reference.
+
+    The (length, charge, hydrophobic moment) grid pins the three marginals Phase 1
+    names, but a cell is wide: two sequences can share all three bins and sit far
+    apart in composition. Recall and the clipped coverage metrics count how much of
+    the reference manifold the library reaches, and a cell filled from one corner
+    reaches less of it than the quota suggests.
+
+    Each cell's reference members are k-means clustered, the cell's quota is split
+    across those sub-clusters in proportion to how many reference sequences each
+    holds, and candidates are later assigned to the nearest centroid. Marginals are
+    untouched, because every sub-quota still sums to its cell's quota.
+
+    Returns the centroids per cell and the per-sub-cluster quotas.
+    """
+    from sklearn.cluster import KMeans
+
+    cells = property_cells(reference)
+    emb = embedding_features(reference)
+
+    by_cell: dict[tuple[int, int, int], list[int]] = {}
+    for i, cell in enumerate(cells):
+        by_cell.setdefault(cell, []).append(i)
+
+    centroids: dict[tuple[int, int, int], np.ndarray] = {}
+    sub_quotas: dict[tuple[int, int, int], np.ndarray] = {}
+    for cell in sorted(quotas):
+        want = quotas[cell]
+        members = by_cell.get(cell)
+        if want <= 0 or not members:
+            continue
+        k = int(min(max_sub, max(1, want // per_cluster), len(members)))
+        if k <= 1:
+            continue
+        X = emb[members]
+        km = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(X)
+        counts = np.bincount(km.labels_, minlength=k).astype(np.float64)
+        share = counts / counts.sum()
+        alloc = np.floor(share * want).astype(np.int64)
+        # Hand the rounding remainder to the largest sub-clusters.
+        for j in np.argsort(-share)[: int(want - alloc.sum())]:
+            alloc[j] += 1
+        centroids[cell] = km.cluster_centers_.astype(np.float32)
+        sub_quotas[cell] = alloc
+    return centroids, sub_quotas
+
+
+def assign_subcluster(
+    sequences: list[str], cells: list[tuple[int, int, int]], centroids: dict
+) -> np.ndarray:
+    """Nearest centroid within each sequence's own property cell, -1 when none."""
+    emb = embedding_features(sequences)
+    out = np.full(len(sequences), -1, dtype=np.int64)
+    by_cell: dict[tuple[int, int, int], list[int]] = {}
+    for i, cell in enumerate(cells):
+        if cell in centroids:
+            by_cell.setdefault(cell, []).append(i)
+    for cell, rows in by_cell.items():
+        idx = np.asarray(rows, dtype=np.int64)
+        d = ((emb[idx][:, None, :] - centroids[cell][None, :, :]) ** 2).sum(axis=2)
+        out[idx] = d.argmin(axis=1)
+    return out

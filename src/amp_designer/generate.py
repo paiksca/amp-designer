@@ -34,7 +34,7 @@ import torch
 from rapidfuzz import process
 from rapidfuzz.distance import Indel
 
-from . import apex, categories, features, lm, novelty, scoring, select, synthesis
+from . import apex, categories, esm, features, lm, novelty, scoring, select, synthesis
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = PACKAGE_ROOT.parent.parent
@@ -63,9 +63,9 @@ TOP_MAX_PAIRWISE = 0.65
 # No ranked sequence may share an exact substring this long with the reference set.
 LONG_SUBSTRING = 10
 
-# The three heads that run over every candidate. The per-species MIC models cost
-# four times as much and only change the ranked list, so they run on the shortlist.
-COARSE_TARGETS = ("amp:clf", "mic:gram_neg", "hem:safe")
+# The heads that run over every candidate. The per-species MIC models cost four
+# times as much and only change the ranked list, so they run on the shortlist.
+COARSE_TARGETS = ("amp:clf", "mic:gram_neg", "hem:safe", "surrogate:mbc")
 # Shortlist size as a multiple of the library, spread across cells by quota share.
 SHORTLIST_SIZE = 90_000
 # How many leading candidates per category go to APEX. It costs about a second per
@@ -164,7 +164,13 @@ def sample_pool(
 def coarse_quality(
     sequences: list[str], scores: dict[str, np.ndarray], reuse: np.ndarray
 ) -> np.ndarray:
-    """Cheap within-cell ranking over the whole pool, from three model heads.
+    """Cheap within-cell ranking over the whole pool.
+
+    `surrogate:mbc` is a head distilled from MBC-Attention, one of the three
+    surrogates the proposal names for its activity family. It ranks the library
+    within a cell only; the top-100 objectives leave it out, because it is
+    demonstrably wrong in places and a wet-lab slot is too expensive to spend on
+    a model that scores poly-glutamate at 1.8 µM.
 
     `reuse` is the share of a sequence's 6-mers that also occur in the reference
     set. Phase 1 scores novelty against known AMPs by normalised alignment
@@ -177,6 +183,7 @@ def coarse_quality(
     return (
         1.20 * scores["amp:clf"]
         - 0.45 * scores["mic:gram_neg"]
+        - 0.90 * scores["surrogate:mbc"]
         + 0.55 * scores["hem:safe"]
         + 0.40 * ok
         - 0.30 * risk
@@ -196,6 +203,7 @@ def library_quality(
     return (
         1.20 * scores["amp:clf"]
         - 0.45 * panel["log2_mic50"]
+        - 0.90 * scores["surrogate:mbc"]
         + 0.55 * panel["p_safe"]
         + 0.40 * ok
         - 0.30 * risk
@@ -392,14 +400,39 @@ class _Build:
         )
         apex_cluster = short_cluster[apex_idx]
 
+        # The descriptor hemolysis head ranks the pool cheaply; the ESM head is
+        # more accurate (AUROC 0.786 against 0.755 on cluster-grouped splits) and
+        # runs here, over the few thousand candidates that actually become the
+        # ranked lists. The gate is re-applied on the better estimate.
+        step(f"re-scoring hemolysis with ESM-2 on {len(apex_seqs)} candidates")
+        encoder = esm.load(_resolve("checkpoint", "esm2_t12_35M"))
+        hem_esm = esm.score(
+            apex_seqs, bundle, encoder, scoring.featurize(apex_seqs)
+        )
+        apex_panel = {k: v[apex_idx] for k, v in panel.items()}
+        apex_panel["p_safe"] = hem_esm["hem_esm:safe"]
+        apex_panel["log2_hc50"] = np.minimum(
+            hem_esm["hem_esm:log2_hc50"], np.log2(scoring.HC50_CEILING)
+        )
+        apex_panel["log2_safety_window"] = apex_panel["log2_hc50"] - np.maximum(
+            apex_panel["log2_mic50"], np.log2(0.5)
+        )
+        apex_scores = {k: v[apex_idx] for k, v in full.items()}
+        apex_env = envelope[apex_idx]
+        apex_risk = risk[apex_idx]
+
         tops: dict[str, list[int]] = {}
         for name in sorted(categories.OBJECTIVES):
+            # Re-rank on the ESM hemolysis estimate rather than the coarse one.
+            refined_q = categories.OBJECTIVES[name](
+                apex_scores, apex_panel, apex_env, apex_risk, apex_scores["amp:clf"]
+            ).astype(np.float32)
             q = categories.blend(
-                model_q[name][apex_idx], categories.APEX_OBJECTIVES[name](apex_sum)
+                refined_q, categories.APEX_OBJECTIVES[name](apex_sum)
             )
             local = pick_top(
                 apex_seqs, q, apex_cluster, reference, top_k,
-                long_kmers=long_kmers, safety=full["hem:safe"][apex_idx],
+                long_kmers=long_kmers, safety=hem_esm["hem_esm:safe"],
             )
             tops[name] = [short[int(apex_idx[i])] for i in local]
 
@@ -419,9 +452,15 @@ class _Build:
         refined = lib_q.copy()
         refined[short_arr] = _quantile_map(better, lib_q[short_arr])
         step(f"ranked {len(tops)} categories; selecting the library")
+        centroids, sub_quotas = select.subcluster_quotas(reference, quotas)
+        sub_assign = select.assign_subcluster(
+            pool, select.property_cells(pool), centroids
+        )
+        step(f"split {len(sub_quotas)} cells into reference sub-regions")
         target_comp = select.mean_composition(reference)
         lib_idx, prices = select.select_matching_composition(
-            pool, refined, quotas, cluster, n_sequences, target_comp, forced=forced
+            pool, refined, quotas, cluster, n_sequences, target_comp,
+            forced=forced, sub_quotas=sub_quotas, sub_assign=sub_assign,
         )
         gap = np.linalg.norm(
             select.mean_composition([pool[i] for i in lib_idx]) - target_comp

@@ -42,6 +42,11 @@ def load(path: Path) -> dict:
         return pickle.load(fh)
 
 
+# Heads that take ESM embeddings alongside the descriptors. They expect a wider
+# feature matrix than the rest, so `score` leaves them to `esm.score`.
+ESM_PREFIX = "hem_esm:"
+
+
 def _is_probability(name: str) -> bool:
     return name.endswith("safe") or name == "amp:clf"
 
@@ -52,6 +57,8 @@ def score(
     X = featurize(sequences, amidated)
     out: dict[str, np.ndarray] = {}
     for name in sorted(bundle):
+        if name.startswith(ESM_PREFIX):
+            continue
         models = bundle[name]
         classify = _is_probability(name)
         acc = np.zeros(len(sequences), dtype=np.float64)
