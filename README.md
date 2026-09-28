@@ -76,7 +76,7 @@ We apply no manual curation.
 ### 1. Conditioned generation
 
 `src/amp_designer/lm.py` is a 4-layer, 192-dimensional, 6-head decoder-only transformer
-(1.81M parameters) over the 20 amino acids, with key/value caching for decoding. We prefix
+(1.8M parameters) over the 20 amino acids, with key/value caching for decoding. We prefix
 sequences with four control tokens:
 
 | control | bins | source |
@@ -118,7 +118,7 @@ split reports roughly twice the real accuracy.
 BattleAMP's 2026 holdout puts published AMP classifiers at AUROC 0.70 to 0.75, so these
 numbers match what the literature reports on a clean split.
 
-The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same 5,617
+The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same
 sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755, ESM-2
 alone 0.764, and descriptors with ESM-2 0.786. Embeddings alone lose to the combination
 because the descriptors state charge and hydrophobicity where a masked language model only
@@ -134,15 +134,16 @@ model input and predict at `amidated=0`.
 We vendor four of the eight released APEX-pathogen checkpoints under `checkpoint/apex/` (Wan
 et al., de la Fuente lab, *Nature Microbiology* 2025, MIT licensed). APEX predicts MIC in µM
 against an 11-pathogen panel, and all 11 strains are on this competition's 20-strain panel:
-the 5 Gram-positive strains, 6 of the 15 Gram-negative, and 4 of the 8 MDR isolates. It is
-also the model that lab used to score the AMP-Diffusion baseline, and that lab runs Phase 2.
+the 5 Gram-positive strains and 6 of the 15 Gram-negative, including 4 of the 8 MDR
+isolates. It is also the model that lab used to score the AMP-Diffusion baseline, and that
+lab runs Phase 2.
 
-APEX gives us a second opinion from a model trained elsewhere. On the 47 HydrAMP peptides
-with prospective wet-lab MIC values, it reaches Spearman 0.50 and AUROC 0.80 for active at
-<= 32 µM. Our ensemble appears to beat it there, but 32 of those 47 sequences are in APEX's
-training data, which makes that comparison leakage. APEX and our ensemble agree at only
-Spearman 0.69, so we blend ranks 55:45 toward our models, which cover all 20 strains and
-include a hemolysis head APEX does not have.
+APEX was trained by another group on other data, so it gives us a second opinion. On the 47
+HydrAMP peptides with prospective wet-lab MIC values, it reaches Spearman 0.50 and AUROC
+0.80 for active at <= 32 µM. Our ensemble appears to beat it there, but 32 of those 47
+sequences are in APEX's training data, which makes that comparison leakage. APEX and our
+ensemble agree at only Spearman 0.69, so we blend ranks 55:45 toward our models, which cover
+all 20 strains and include a hemolysis head APEX does not have.
 
 Four checkpoints rank 4,000 peptides at Spearman 0.983 against the full set, at 81 MB
 against 220 MB.
@@ -164,8 +165,8 @@ the coarse scores of the same candidates.
 `surrogate:mbc` reproduces MBC-Attention, one of the three activity surrogates the proposal
 names. MBC-Attention itself takes 27 minutes per 300,000 candidates and requires TensorFlow
 and a vendored model. We distilled it into the same gradient-boosting form as our other
-heads, fitting on 59,466 sequences spanning the library, the training corpus and the
-reference set. It reproduces the original at Spearman 0.801 on held-out clusters.
+heads, fitting on sequences spanning the library, the training corpus and the reference set.
+It reproduces the original at Spearman 0.801 on held-out clusters.
 
 Measured directly on MBC-Attention at 4,000 sequences per side, this library has a median
 predicted MIC of 19.2 µM against 27.4 µM for real AMPs and 14.5 µM for the HydrAMP baseline.
@@ -189,9 +190,8 @@ predicted MIC falls from 37 µM to 5.8 µM. A cationic library therefore scores 
 predicted activity and worse on the four Phase-1 families, as charge enters the conformity
 score, the KL divergences, the Frechet distance, MMD, precision and recall. The HydrAMP
 baseline shows how large the trade-off is. Its mean charge of 4.88 against the reference's
-2.59 comes with a KL-charge of 0.68 and a Frechet distance of 1.71, where a held-out slice
-of real AMPs scores 0.010 and 0.012. We match the histogram and take the best candidates
-inside each cell instead.
+2.63 comes with a KL-charge of 0.559, where a held-out slice of real AMPs scores 0.009. We
+match the histogram and take the best candidates inside each cell instead.
 
 Within a cell we take one candidate per MinHash cluster per pass, so the library includes as
 many families as the quota allows. We build cluster keys from a digest of character codes
@@ -347,11 +347,11 @@ chose those peptides for high selectivity and their measured indices span a narr
 Across the full range the head reaches AUROC 0.786.
 
 The ranked lists are also concentrated in one structural class. Entries are cationic
-amphipathic sequences of the helix-forming kind, and across the selectivity list the residue
-counts are Lys 481, Arg 276, Ile 189, Leu 162, Val 160 and Trp 136, with no Cys and no Met.
-That is the best-validated AMP class and the one our training data is densest in. If it
-fails systematically, the peptides in the draw fail with it, so we spread each list of 100
-over 99 or 100 distinct MinHash clusters with no pair above a 0.65 Levenshtein ratio.
+amphipathic sequences of the helix-forming kind, built from Lys and Arg with Ile, Leu, Val
+and Trp, and no Cys or Met. That is the best-validated AMP class and the one our training
+data is densest in. If it fails systematically, the peptides in the draw fail with it, so we
+spread each list of 100 over 99 or 100 distinct MinHash clusters with no pair above a 0.65
+Levenshtein ratio.
 
 Amphipathic beta-sheet designs were the second class we considered. We tested the beta-sheet
 hydrophobic moment against measured HC50 on 465 potent peptides, found the relationship weak
