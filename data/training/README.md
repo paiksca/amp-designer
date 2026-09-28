@@ -17,8 +17,8 @@ Re-run it to rebuild them.
 ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here. Re-run
 `build_data.py` to produce it.
 
-We read hemolysis data from the HemoPI2 release at training time rather than
-redistributing it, as that repository is GPL-3.0 licensed. Its HC50 values come from
+HemoPI2 is GPL-3.0 licensed, so we read its hemolysis data at training time and keep it out
+of this repository. Its HC50 values come from
 DBAASP and Hemolytik, both public. We pool them with the direct DBAASP harvest, which adds
 370 sequences HemoPI2 does not have. The two agree at Spearman 0.916 on the 1,306 they
 share, which is our check that they measure the same thing.
@@ -55,8 +55,8 @@ data.
 We measured both, and both lowered accuracy.
 
 **Potency measures are not interchangeable.** A peptide's `targetActivities` list mixes MIC
-with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are panel
-statistics rather than per-strain values. In a 4,000-record sample the split was 22,803 MIC
+with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are statistics over a
+panel where MIC is a per-strain value. In a 4,000-record sample the split was 22,803 MIC
 against roughly 6,900 of everything else. Pooling them dropped the Gram-negative model from
 AUROC 0.801 to 0.750 even though it added 59% more sequences. `dbaasp_harvest.py` keeps
 `activityMeasureGroup == "MIC"` and nothing else.
