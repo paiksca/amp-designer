@@ -192,7 +192,10 @@ def sample(
     logits = model(idx, caches=caches, offset=0)[:, -1, :].float()
     offset = idx.shape[1]
 
-    alive = torch.ones(n, dtype=torch.bool)
+    # Rows that have emitted EOS are dropped from the batch rather than carried to
+    # the end on padding. Most peptides finish well before 50 residues, so keeping
+    # them would roughly double the work.
+    live = torch.arange(n)
     letters = np.full((n, max_len), -1, dtype=np.int8)
     lengths = np.zeros(n, dtype=np.int32)
 
@@ -216,16 +219,21 @@ def sample(
             nxt = torch.multinomial(probs, 1, generator=generator)
         nxt = nxt.squeeze(1)
 
-        emitted = (nxt < 20) & alive
-        rows = torch.nonzero(emitted).squeeze(1).numpy()
-        if rows.size:
+        emitted = nxt < 20
+        if bool(emitted.any()):
+            rows = live[emitted].numpy()
             letters[rows, lengths[rows]] = nxt[emitted].numpy().astype(np.int8)
             lengths[rows] += 1
-        alive = alive & (nxt != EOS)
-        if not bool(alive.any()):
+
+        keep = torch.nonzero(emitted).squeeze(1)
+        if keep.numel() == 0:
             break
-        # Finished rows keep stepping on EOS so the batch stays rectangular.
-        nxt = torch.where(alive, nxt, torch.full_like(nxt, EOS))
+        live = live[keep]
+        nxt = nxt[keep]
+        for cache in caches:
+            cache[0] = cache[0][keep]
+            cache[1] = cache[1][keep]
+
         logits = model(nxt[:, None], caches=caches, offset=offset)[:, -1, :].float()
         offset += 1
 

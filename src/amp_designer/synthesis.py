@@ -179,7 +179,11 @@ def envelope_score(sequences: list[str]) -> np.ndarray:
 
     Hydrophobic moment (p = 0.23), net charge (p = 0.25), Trp (p = 0.30), Arg
     (p = 0.10) and Pro (p = 0.74) did not separate them, so none of them appears
-    here however often the folklore invokes them. Net charge is represented only
+    here however often the folklore invokes them. Cationic residues placed on the
+    hydrophobic face were tested too, after a report of a several-hundred-fold HC50
+    gain on dermaseptin S4, and did not replicate across 465 potent peptides with
+    measured HC50 (Spearman -0.009, p = 0.54); only the 25 sequences carrying three
+    or more showed anything, and those were worse. Net charge is represented only
     through charge density, which does separate: +5 on 16 residues is safe, +5 on
     26 is not.
 

@@ -173,3 +173,27 @@ def kmer_hit_fraction(
                 hits += 1
         out[i] = hits / n
     return out
+
+
+def shares_long_substring(
+    sequences: list[str], reference_kmers: frozenset[str], k: int = 10
+) -> np.ndarray:
+    """True where a sequence contains an exact k-mer from the reference set.
+
+    This is the guard against a short perfect local alignment. MMseqs2 reports
+    identity over the aligned region, so an exact 10-residue match inside a 25-mer
+    scores 1.0 however different the rest is, and the proposal states the 80% rule
+    in terms of MMseqs2 identity while the shipped validator computes a Levenshtein
+    ratio. Blocking shared 10-mers satisfies the stricter reading without needing
+    an aligner at generation time.
+
+    It costs little: 3% of the ranked candidates carry one, against 54% of real
+    AMPs measured against the rest of the reference set.
+    """
+    out = np.zeros(len(sequences), dtype=bool)
+    for i, s in enumerate(sequences):
+        for j in range(len(s) - k + 1):
+            if s[j : j + k] in reference_kmers:
+                out[i] = True
+                break
+    return out

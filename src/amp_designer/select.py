@@ -202,3 +202,52 @@ def composition_gap(sequences: list[str], reference: list[str]) -> float:
     a = features.composition(a_idx, a_len).mean(axis=0)
     b = features.composition(b_idx, b_len).mean(axis=0)
     return float(np.linalg.norm(a - b))
+
+
+def select_matching_composition(
+    sequences: list[str],
+    quality: np.ndarray,
+    quotas: dict[tuple[int, int, int], int],
+    cluster: np.ndarray,
+    total: int,
+    target: np.ndarray,
+    forced: list[int] | None = None,
+    passes: int = 8,
+    step: float = 14.0,
+    tolerance: float = 0.012,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Select under the quota grid while pulling mean composition onto `target`.
+
+    The quota grid pins length, charge and hydrophobic moment, but nothing pins the
+    residue composition, and composition is what carries most of the Frechet
+    distance under a small protein language model. Ranking inside a cell on
+    predicted activity pulls the library toward Lys, Arg and Leu, which is how it
+    drifts.
+
+    The correction is a price per residue. Selection maximises
+    `quality - composition @ price`, and after each pass the price of a residue the
+    library over-produces rises while an under-produced one falls. Prices only
+    reorder candidates within a cell, so every quota and therefore every property
+    marginal is untouched. Returns the chosen indices and the fitted prices.
+    """
+    idx, lengths = features.encode(sequences)
+    comp = features.composition(idx, lengths)
+    prices = np.zeros(20, dtype=np.float64)
+
+    chosen = select(sequences, quality, quotas, cluster, total, forced=forced)
+    best, best_gap = chosen, float(np.linalg.norm(comp[chosen].mean(axis=0) - target))
+    for _ in range(passes):
+        if best_gap < tolerance:
+            break
+        prices += step * (comp[chosen].mean(axis=0) - target)
+        adjusted = (quality - comp @ prices).astype(np.float32)
+        chosen = select(sequences, adjusted, quotas, cluster, total, forced=forced)
+        gap = float(np.linalg.norm(comp[chosen].mean(axis=0) - target))
+        if gap < best_gap:
+            best, best_gap = chosen, gap
+    return best, prices
+
+
+def mean_composition(sequences: list[str]) -> np.ndarray:
+    idx, lengths = features.encode(sequences)
+    return features.composition(idx, lengths).mean(axis=0)

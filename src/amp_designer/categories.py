@@ -17,6 +17,15 @@ import numpy as np
 HC50_CEILING_LOG2 = 7.0  # log2(128 µM), the reported ceiling
 MIC_CEILING_LOG2 = 6.0   # log2(64 µM)
 
+# No ranked candidate may fall below this predicted probability of HC50 >= 128 µM.
+# Potency and hemolysis both rise with charge and hydrophobicity, so ranking on
+# potency alone walks straight into the hemolytic corner: an earlier build came out
+# at 30% predicted safe against a 37% base rate among potent peptides. A gate is the
+# right instrument rather than a larger weight, because the models rank potency far
+# better than they rank hemolysis, and one severely hemolytic peptide costs a
+# wet-lab slot in every category, not only in selectivity.
+SAFETY_FLOOR = 0.35
+
 # The Phase-2 panel: 15 Gram-negative strains and 5 Gram-positive.
 PANEL_COUNTS = {
     "mic:sp_ecoli": 5,        # ATCC 11775, AIC221, AIC222, BAA-3170, K-12 BW25113
@@ -78,9 +87,9 @@ def broad_spectrum(scores, panel, envelope, risk, amp) -> np.ndarray:
     return (
         -1.40 * mean_mic
         - 0.70 * worst
-        + 0.90 * panel["p_safe"]
+        + 1.70 * panel["p_safe"]
         + 0.60 * amp
-        + 1.10 * envelope
+        + 1.50 * envelope
         - 1.10 * risk
     )
 
@@ -92,9 +101,9 @@ def gram_pos(scores, panel, envelope, risk, amp) -> np.ndarray:
     return (
         -1.80 * mean_mic
         - 0.60 * worst
-        + 0.80 * panel["p_safe"]
+        + 1.50 * panel["p_safe"]
         + 0.50 * amp
-        + 0.90 * envelope
+        + 1.30 * envelope
         - 1.10 * risk
     )
 
@@ -109,9 +118,9 @@ def gram_neg(scores, panel, envelope, risk, amp) -> np.ndarray:
     return (
         -1.80 * mean_mic
         - 0.70 * worst
-        + 0.80 * panel["p_safe"]
+        + 1.50 * panel["p_safe"]
         + 0.50 * amp
-        + 0.90 * envelope
+        + 1.30 * envelope
         - 1.10 * risk
     )
 
@@ -129,9 +138,9 @@ def mdr(scores, panel, envelope, risk, amp) -> np.ndarray:
     return (
         -1.70 * mean_mic
         - 0.80 * worst
-        + 0.80 * panel["p_safe"]
+        + 1.50 * panel["p_safe"]
         + 0.50 * amp
-        + 1.00 * envelope
+        + 1.40 * envelope
         - 1.20 * risk
     )
 
@@ -139,26 +148,30 @@ def mdr(scores, panel, envelope, risk, amp) -> np.ndarray:
 def therapeutic(scores, panel, envelope, risk, amp) -> np.ndarray:
     """Optimal Selectivity: the safety window HC50 / MIC50.
 
-    HC50 is reported only up to 128 µM, so once a peptide is confidently past that
-    ceiling a further drop in hemolysis earns nothing, while MIC still spans 0.5 to
-    64 µM. The window is therefore won on potency subject to clearing the ceiling,
-    not by minimising hemolysis. The qualifying rule reinforces it: a peptide needs
-    MIC <= 16 µM on at least one strain to enter the category at all.
+    Written as the window itself. In log2, SW = log2(HC50) - log2(MIC50), and
+    `panel["log2_hc50"]` is already clipped at log2(128) because that is the
+    ceiling Phase 2 reports. The two terms therefore carry equal weight and their
+    sum is the predicted log2 window.
 
-    `p_safe` enters through a saturating term rather than linearly, which pays for
-    reaching high confidence of clearing 128 µM and stops paying past it. The
-    potency term then does the rest of the work.
+    Clipping is what makes this category different from a potency category. Once a
+    peptide is past 128 µM a further drop in hemolysis earns nothing, while MIC
+    still spans 0.5 to 64 µM, so the window is won on potency subject to clearing
+    the ceiling. `p_safe` stays as a smaller term for confidence that the ceiling
+    really is cleared, which the point estimate alone does not express. The
+    qualifying rule adds the last piece: a peptide needs MIC <= 16 µM on at least
+    one strain to enter the category at all, so its best strain matters separately
+    from its median.
     """
     mean_mic = _weighted(scores, PANEL_COUNTS, "mic:gram_neg", GRAM_NEG_FALLBACK)
     best = np.vstack(
         [scores[h] for h in GRAM_NEG_HEADS + GRAM_POS_HEADS if h in scores]
     ).min(axis=0)
-    clears_ceiling = np.sqrt(np.clip(panel["p_safe"], 0.0, 1.0))
     return (
-        -1.10 * mean_mic
-        - 0.60 * np.clip(best, np.log2(0.5), None)   # the qualifying strain
-        + 2.60 * clears_ceiling
-        + 1.90 * envelope
+        1.20 * panel["log2_hc50"]
+        - 1.20 * mean_mic
+        - 0.50 * np.clip(best, np.log2(0.5), None)
+        + 0.90 * panel["p_safe"]
+        + 1.60 * envelope
         + 0.30 * amp
         - 1.30 * risk
     )
@@ -225,9 +238,20 @@ APEX_OBJECTIVES = {
 APEX_WEIGHT = 0.45
 
 
+# Penalty on how far the two rankings disagree about a candidate. Selecting the
+# top of a noisy score over-represents candidates whose error happened to be
+# favourable, and a peptide that only one of two independent models likes is the
+# usual shape of that. Since the team score is the mean over 25 peptides drawn at
+# random, shrinking those optimistic outliers is worth more than the few genuine
+# finds it costs.
+DISAGREEMENT_PENALTY = 0.25
+
+
 def blend(model_quality: np.ndarray, apex_quality: np.ndarray,
-          weight: float = APEX_WEIGHT) -> np.ndarray:
+          weight: float = APEX_WEIGHT,
+          disagreement: float = DISAGREEMENT_PENALTY) -> np.ndarray:
     """Rank-blend two scores whose raw scales are not comparable."""
+    a, b = rank_pct(model_quality), rank_pct(apex_quality)
     return (
-        (1.0 - weight) * rank_pct(model_quality) + weight * rank_pct(apex_quality)
+        (1.0 - weight) * a + weight * b - disagreement * np.abs(a - b)
     ).astype(np.float32)

@@ -25,10 +25,14 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
 import torch
+
+from rapidfuzz import process
+from rapidfuzz.distance import Indel
 
 from . import apex, categories, features, lm, novelty, scoring, select, synthesis
 
@@ -43,8 +47,21 @@ DEFAULT_LENGTH = 50
 CANDIDATE_MULTIPLIER = 6
 MAX_CANDIDATES = 300_000
 SAMPLE_BATCH = 8_192
-NOVELTY_THRESHOLD = 0.8
+# The validator rejects a ranked sequence above Levenshtein.ratio 0.80 against the
+# reference set, while the proposal states the same rule as MMseqs2 alignment
+# identity. The two are different measures, so the ranked lists are held to 0.75
+# and the margin covers the gap between them.
+NOVELTY_THRESHOLD = 0.75
 TOP_CLUSTER_CAP = 3
+# No two ranked sequences may exceed this Levenshtein ratio to each other. The
+# MinHash cluster key only catches near-identical sequences, and the point of the
+# cap is coarser than that: 25 peptides are drawn from the 100 and averaged, so a
+# list built from one scaffold risks every draw failing for the same reason. The
+# models are far better at telling active from inactive than at ranking among the
+# active, which makes spread across scaffolds worth more than the ranking it costs.
+TOP_MAX_PAIRWISE = 0.65
+# No ranked sequence may share an exact substring this long with the reference set.
+LONG_SUBSTRING = 10
 
 # The three heads that run over every candidate. The per-species MIC models cost
 # four times as much and only change the ranked list, so they run on the shortlist.
@@ -186,41 +203,16 @@ def library_quality(
     ).astype(np.float32)
 
 
-def candidate_quality(
-    sequences: list[str], scores: dict[str, np.ndarray], panel: dict[str, np.ndarray]
-) -> np.ndarray:
-    """Rank the top-100 on the quantity Phase 2 actually scores.
-
-    Twenty-five peptides are drawn uniformly from the ranked list and the team
-    score is their arithmetic mean, so every entry has to stand on its own and the
-    objective is expected value, not best case. Potency carries most of the weight:
-    HC50 is reported only up to 128 µM, so a peptide already predicted past that
-    ceiling gains nothing from being less hemolytic, while MIC spans 0.5 to 64 µM.
-    The Gram-negative term is doubled because 15 of the 20 panel strains are
-    Gram-negative, and the worst-species term rewards genuinely broad coverage
-    rather than a peptide that is potent against E. coli alone.
-    """
-    risk = synthesis.risk_score(sequences)
-    envelope = synthesis.envelope_score(sequences)
-    return (
-        -1.00 * panel["log2_mic_neg"]
-        - 0.50 * panel["log2_mic_pos"]
-        - 0.45 * panel["log2_mic_worst_neg"]
-        + 1.60 * panel["p_safe"]
-        + 0.25 * np.minimum(panel["log2_hc50"], np.log2(scoring.HC50_CEILING))
-        + 0.60 * scores["amp:clf"]
-        + 1.30 * envelope
-        - 1.10 * risk
-    ).astype(np.float32)
-
-
 def pick_top(
     sequences: list[str],
     quality: np.ndarray,
     cluster: np.ndarray,
     reference: list[str],
     top_k: int,
+    long_kmers: frozenset[str] | None = None,
+    safety: np.ndarray | None = None,
     cluster_cap: int = TOP_CLUSTER_CAP,
+    max_pairwise: float = TOP_MAX_PAIRWISE,
 ) -> list[int]:
     """Choose the ranked list: strict rules, exact novelty, capped per cluster.
 
@@ -230,6 +222,12 @@ def pick_top(
     together. Several families fail independently.
     """
     strict = synthesis.strict_flags(sequences)
+    if safety is not None:
+        strict = strict & (safety >= categories.SAFETY_FLOOR)
+    if long_kmers:
+        strict = strict & ~novelty.shares_long_substring(
+            sequences, long_kmers, k=LONG_SUBSTRING
+        )
     order = np.lexsort((np.arange(len(sequences)), -quality))
     eligible = [int(i) for i in order if strict[i]]
     if len(eligible) < top_k * 4:
@@ -256,9 +254,31 @@ def pick_top(
             c = int(cluster[i])
             if per_cluster.get(c, 0) >= cluster_cap:
                 continue
+            if chosen and max_pairwise < 1.0:
+                near = process.cdist(
+                    [sequences[i]], [sequences[j] for j in chosen],
+                    scorer=Indel.normalized_similarity, workers=-1,
+                ).max()
+                if near > max_pairwise:
+                    continue
             per_cluster[c] = per_cluster.get(c, 0) + 1
             chosen.append(i)
+
+    # Relax the spacing rather than return a short list, which the validator rejects.
+    if len(chosen) < top_k and max_pairwise < 1.0:
+        return pick_top(
+            sequences, quality, cluster, reference, top_k, long_kmers=long_kmers,
+            safety=safety, cluster_cap=cluster_cap + 2, max_pairwise=min(1.0, max_pairwise + 0.15),
+        )
     return chosen
+
+
+def _quantile_map(values: np.ndarray, onto: np.ndarray) -> np.ndarray:
+    """Re-express `values` on the scale of `onto`, preserving their ordering."""
+    order = np.lexsort((np.arange(len(values)), values))
+    ranks = np.empty(len(values), dtype=np.int64)
+    ranks[order] = np.arange(len(values))
+    return np.sort(onto)[ranks].astype(np.float32)
 
 
 def shortlist_by_cell(
@@ -297,6 +317,11 @@ class _Build:
 
     def __init__(self, n_sequences: int, length: int, seed: int, top_k: int):
         _set_determinism()
+        t0 = time.time()
+
+        def step(message: str) -> None:
+            print(f"[{time.time() - t0:6.0f}s] {message}", flush=True)
+
         max_len = int(min(max(length, lm.MIN_LEN), lm.MAX_LEN))
         reference = read_fasta(_resolve("data", "antibacterial.fasta"))
         reference_set = frozenset(reference)
@@ -306,9 +331,11 @@ class _Build:
         n_target = min(
             MAX_CANDIDATES, max(n_sequences * CANDIDATE_MULTIPLIER, n_sequences + 1000)
         )
+        step(f"sampling up to {n_target} candidates from the language model")
         pool = sample_pool(
             model, combos, weights, n_target, max_len, seed, reference_set
         )
+        step(f"sampled {len(pool)} distinct candidates")
         if len(pool) < n_sequences:
             raise RuntimeError(
                 f"only {len(pool)} distinct candidates for a library of {n_sequences}"
@@ -316,9 +343,11 @@ class _Build:
 
         bundle = scoring.load(_resolve("checkpoint", "scorers.pkl.gz"))
         coarse = {k: v for k, v in bundle.items() if k in COARSE_TARGETS}
+        step("scoring the pool with the coarse ensemble")
         raw = scoring.score(pool, coarse)
 
         ref_kmers = novelty.reference_kmers(reference, k=6)
+        long_kmers = novelty.reference_kmers(reference, k=LONG_SUBSTRING)
         reuse = novelty.kmer_hit_fraction(pool, ref_kmers, k=6)
         cluster = select.minhash_signature(pool)
         lib_q = coarse_quality(pool, raw, reuse)
@@ -326,9 +355,11 @@ class _Build:
         quotas = select.target_quotas(reference, n_sequences)
         shares = {cell: q / max(n_sequences, 1) for cell, q in quotas.items()}
         short = shortlist_by_cell(pool, lib_q, shares, SHORTLIST_SIZE)
+        step(f"shortlisted {len(short)} candidates across {len(quotas)} property cells")
 
         short_seqs = [pool[i] for i in short]
         full = scoring.score(short_seqs, bundle)
+        step("scored the shortlist with the full per-species ensemble")
         panel = scoring.panel_summary(full)
         envelope = synthesis.envelope_score(short_seqs)
         risk = synthesis.risk_score(short_seqs)
@@ -342,10 +373,12 @@ class _Build:
             for name, fn in sorted(categories.OBJECTIVES.items())
         }
 
-        # Stage 3: APEX-pathogen re-ranks the region where the list is decided. Only
-        # candidates that already clear the strict synthesis rules go in, so none of
-        # the budget is spent on sequences that cannot be ranked anyway.
-        eligible = np.flatnonzero(synthesis.strict_flags(short_seqs))
+        # Stage 3: APEX-pathogen re-ranks the region where the list is decided.
+        # Only candidates that already clear the strict synthesis rules and the
+        # safety gate go in, so none of that budget is spent on sequences no
+        # category would rank anyway.
+        safe_enough = full["hem:safe"] >= categories.SAFETY_FLOOR
+        eligible = np.flatnonzero(synthesis.strict_flags(short_seqs) & safe_enough)
         pool_idx: set[int] = set()
         for q in model_q.values():
             ranked = eligible[np.argsort(-q[eligible], kind="stable")]
@@ -353,6 +386,7 @@ class _Build:
         apex_idx = np.array(sorted(pool_idx), dtype=np.int64)
 
         apex_seqs = [short_seqs[i] for i in apex_idx]
+        step(f"running APEX-pathogen on {len(apex_seqs)} leading candidates")
         apex_sum = apex.summary(
             apex.predict(apex_seqs, apex.load(_resolve("checkpoint", "apex")))
         )
@@ -363,7 +397,10 @@ class _Build:
             q = categories.blend(
                 model_q[name][apex_idx], categories.APEX_OBJECTIVES[name](apex_sum)
             )
-            local = pick_top(apex_seqs, q, apex_cluster, reference, top_k)
+            local = pick_top(
+                apex_seqs, q, apex_cluster, reference, top_k,
+                long_kmers=long_kmers, safety=full["hem:safe"][apex_idx],
+            )
             tops[name] = [short[int(apex_idx[i])] for i in local]
 
         self.apex_index = apex_idx
@@ -371,13 +408,26 @@ class _Build:
 
         forced = sorted({i for idx_list in tops.values() for i in idx_list})
 
+        # The shortlist gets a better score from the full ensemble, but that score
+        # is not on the same scale as the coarse one the rest of the pool carries,
+        # and one ranking mixes them. Quantile-mapping the refined ordering back
+        # onto the coarse scores of those same candidates keeps the improvement in
+        # ordering without letting a scale offset promote or demote the shortlist
+        # as a block.
+        short_arr = np.asarray(short, dtype=np.int64)
+        better = library_quality(short_seqs, full, panel, reuse[short_arr])
         refined = lib_q.copy()
-        refined[np.asarray(short, dtype=np.int64)] = library_quality(
-            short_seqs, full, panel, reuse[np.asarray(short, dtype=np.int64)]
+        refined[short_arr] = _quantile_map(better, lib_q[short_arr])
+        step(f"ranked {len(tops)} categories; selecting the library")
+        target_comp = select.mean_composition(reference)
+        lib_idx, prices = select.select_matching_composition(
+            pool, refined, quotas, cluster, n_sequences, target_comp, forced=forced
         )
-        lib_idx = select.select(
-            pool, refined, quotas, cluster, n_sequences, forced=forced
+        gap = np.linalg.norm(
+            select.mean_composition([pool[i] for i in lib_idx]) - target_comp
         )
+        step(f"library selected; composition gap to the reference {gap:.4f}")
+        self.composition_prices = prices
 
         self.pool = pool
         self.shortlist = short
@@ -415,13 +465,27 @@ def generate(
     return list(_build(n_sequences, length, seed, DEFAULT_TOP_K).library)
 
 
-def score(sequences: list[str]) -> list[float]:
-    """Score sequences for ranking. Higher is better."""
+def score(sequences: list[str], category: str = categories.DEFAULT) -> list[float]:
+    """Score sequences for ranking. Higher is better.
+
+    This is the broad-spectrum objective by default, the same one that orders
+    `generate/top.fasta`. It leaves out the APEX term, which only ever runs on a
+    shortlist, so a score from here is the model-side component alone.
+    """
+    seqs = list(sequences)
     _set_determinism()
     bundle = scoring.load(_resolve("checkpoint", "scorers.pkl.gz"))
-    raw = scoring.score(list(sequences), bundle)
+    raw = scoring.score(seqs, bundle)
     panel = scoring.panel_summary(raw)
-    return [float(v) for v in candidate_quality(list(sequences), raw, panel)]
+    objective = categories.objective_for(category)
+    values = objective(
+        raw,
+        panel,
+        synthesis.envelope_score(seqs),
+        synthesis.risk_score(seqs),
+        raw["amp:clf"],
+    )
+    return [float(v) for v in values]
 
 
 def _write_fasta(sequences: list[str], path: Path, prefix: str) -> None:

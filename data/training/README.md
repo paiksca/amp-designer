@@ -11,8 +11,11 @@ this directory from the repositories listed below; re-run it to rebuild them.
 | `amp_positives.txt` | 44,585 | known antibacterial peptides, 8-50 residues, canonical alphabet, deduplicated. Trains the language model. |
 | `amp_negatives.txt` | 15,821 | sequences assumed non-antimicrobial, same length window, disjoint from the positives. Trains the AMP classifier. |
 | `mic.csv.gz` | 36,312 | one row per (sequence, target species) with MIC converted to µM, a censoring flag for assay-ceiling values, and a C-terminal amidation flag. 7,872 distinct sequences. |
-| `slay.csv.gz` | 438,484 | SLAY display-screen growth-inhibition log ratios against *E. coli*. Assembled and disclosed; not used by the shipped checkpoints. |
 | `challenge_reference.txt` | 39,448 | the challenge's own reference set, copied for convenience. Not training data. |
+
+`build_data.py` also assembles a 438,484-row table of SLAY display-screen growth-inhibition
+ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here; re-run
+`build_data.py` to produce it.
 
 Hemolysis data is read directly from the HemoPI2 release at training time and is not
 redistributed here, because that repository is GPL-3.0 licensed. The underlying HC50
