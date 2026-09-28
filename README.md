@@ -191,7 +191,7 @@ predicted activity and worse on the four Phase-1 families, as charge enters the 
 score, the KL divergences, the Frechet distance, MMD, precision and recall. The HydrAMP
 baseline shows how large the trade-off is. Its mean charge of 4.88 against the reference's
 2.63 comes with a KL-charge of 0.559, where a held-out slice of real AMPs scores 0.009. We
-match the histogram and take the best candidates inside each cell instead.
+match the histogram and take the best candidates inside each cell.
 
 Within a cell we take one candidate per MinHash cluster per pass, so the library includes as
 many families as the quota allows. We build cluster keys from a digest of character codes
@@ -221,8 +221,8 @@ tighter constraint leaves fewer candidates in each sub-region.
 Cys or Met, no Asp followed by G, A, S, T, C, R, D or N, no Asn-Gly, no QQ or NN, no
 N-terminal Gln, no run over three identical or five beta-sheet-prone residues, at most four
 basic residues in any five-residue window, beta-sheet formers under 42%, net charge at least
-+2, GRAVY at most 1.0, and 11 to 26 residues. For each rule that file records how often a
-published AMP would trip it.
++2, GRAVY at most 1.0, and 11 to 26 residues. That file records how often a published AMP
+would trip each rule.
 
 We then check survivors against the 39,448 reference sequences with an exact
 `Levenshtein.ratio`, drop any that share an exact 10-residue substring with them, cap each
