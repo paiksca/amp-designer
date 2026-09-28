@@ -18,7 +18,7 @@ ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed 
 `build_data.py` to produce it.
 
 We read hemolysis data from the HemoPI2 release at training time rather than
-redistributing it, because that repository is GPL-3.0 licensed. Its HC50 values come from
+redistributing it, as that repository is GPL-3.0 licensed. Its HC50 values come from
 DBAASP and Hemolytik, both public. We pool them with the direct DBAASP harvest, which adds
 370 sequences HemoPI2 does not have. The two agree at Spearman 0.916 on the 1,306 they
 share, which is our check that they measure the same thing.
@@ -52,7 +52,7 @@ data.
 
 ## Two label-quality traps in DBAASP
 
-We measured both, and both cost accuracy.
+We measured both, and both lowered accuracy.
 
 **Potency measures are not interchangeable.** A peptide's `targetActivities` list mixes MIC
 with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are panel
