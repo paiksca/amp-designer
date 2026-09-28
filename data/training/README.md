@@ -11,7 +11,7 @@ Re-run it to rebuild them.
 | `amp_positives.txt` | 44,585 | known antibacterial peptides, 8-50 residues, canonical alphabet, deduplicated. Trains the language model. |
 | `amp_negatives.txt` | 15,821 | sequences assumed non-antimicrobial, same length window, disjoint from the positives. Trains the AMP classifier. |
 | `mic.csv.gz` | 137,819 | one row per (sequence, target species) with MIC converted to µM, a censoring flag for assay-ceiling values, and a C-terminal amidation flag. 12,993 distinct sequences. |
-| `challenge_reference.txt` | 39,448 | the challenge's own reference set, copied for convenience. Not training data. |
+| `challenge_reference.txt` | 39,448 | the challenge's reference set, copied for convenience. Not training data. |
 
 `build_data.py` also assembles a 438,484-row table of SLAY display-screen growth-inhibition
 ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here. Re-run
@@ -73,7 +73,7 @@ in sensitivity, and Phase 2 measures human cells.
 ## Preprocessing
 
 - We upper-case sequences, restrict them to `ACDEFGHIKLMNPQRSTVWY`, and keep only 8 to 50
-  residues, matching the competition's own rules.
+  residues, matching the competition's rules.
 - We convert MIC concentrations given in µg/ml to µM using the molecular weight computed
   from the sequence with average residue masses plus water.
 - We record a concentration written as `>X` at X with `censored = True`, meaning the assay
