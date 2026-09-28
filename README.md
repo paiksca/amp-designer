@@ -64,11 +64,11 @@ Every entry clears a strict synthesis rule set, a gate on predicted hemolysis, a
 an exact 10-residue substring with them, and a cap of 0.65 on the Levenshtein ratio between
 any two ranked sequences.
 
-We bring in two outside signals. APEX-pathogen predicts micromolar MIC for 11 of the 20
-panel strains and comes from the laboratory running Phase 2, so we vendor it and rank-blend
-it with our ensembles at 45%, penalizing candidates the two disagree about. Hemolysis is our
-weakest prediction and the one the selectivity category turns on, so we re-estimate it with
-an ESM-2 head over the few thousand candidates that reach the lists.
+APEX-pathogen predicts micromolar MIC for 11 of the 20 panel strains and comes from the
+laboratory running Phase 2, so we vendor it and rank-blend it with our ensembles at 45%,
+penalizing candidates the two disagree about. Hemolysis is our weakest prediction and the
+one the selectivity category turns on, so we re-estimate it with an ESM-2 head over the few
+thousand candidates that reach the lists.
 
 We apply no manual curation.
 
@@ -187,7 +187,7 @@ We copy the charge histogram unchanged, which is the pipeline's largest trade-of
 activity rises with net charge: over a 6,000-sequence sample of the reference set, the AMP
 classifier gives 0.767 to sequences below zero charge and 0.980 to those at +8 or above,
 with predicted MIC falling from 37 µM to 5.8 µM. A cationic library therefore scores better
-on predicted activity and worse on the four Phase-1 families, because charge enters the
+on predicted activity and worse on the four Phase-1 families, as charge enters the
 conformity score, the KL divergences, the Frechet distance, MMD, precision and recall. The
 HydrAMP baseline shows how large the trade-off is: its mean charge of 4.88 against the
 reference's 2.59 comes with a KL-charge of 0.68 and a Frechet distance of 1.71, where a
@@ -197,7 +197,7 @@ reference distribution.
 
 Within a cell we take one candidate per MinHash cluster per pass, so the library spreads
 over as many distinct families as the quota allows before we take a second member of any. We
-build cluster keys from a digest of character codes, because Python's `hash` is salted per
+build cluster keys from a digest of character codes because Python's `hash` is salted per
 process and would break reproducibility.
 
 The quota grid pins length, charge and hydrophobic moment, but nothing pins residue
@@ -233,7 +233,7 @@ We then check survivors against the 39,448 reference sequences with an exact
 MinHash cluster at three, and drop any candidate within 0.65 Levenshtein of a sequence we
 have already picked.
 
-We set the threshold at 0.75, under the validator's 0.80, because the proposal states the
+We set the threshold at 0.75 (under the validator's 0.80) because the proposal states the
 same rule as MMseqs2 alignment identity, and the two are different measures. MMseqs2 reports
 identity over the aligned region, so one exact 10-residue match inside a 25-mer scores 1.0
 however different the rest is. Banning shared 10-mers closes that gap without making us run
@@ -246,7 +246,7 @@ identity hits that remain above 0.80 are short local alignments, median 11 resid
 half the query, with 3 of 129 reaching 80% query coverage. The real-AMP hits cover the query
 completely.
 
-The pairwise cap is a hedge. The models separate active from inactive far better than they
+The pairwise cap is a hedge: the models separate active from inactive far better than they
 rank among the active, so 25 peptides drawn from a list built on one scaffold risk failing
 together for the same reason. Real AMPs sit at a median pairwise ratio of 0.258, where a cap
 of 0.65 blocks near-copies without binding on genuine variety.
@@ -300,8 +300,8 @@ quota grid covers the reference distribution where the baseline occupies one cor
 and the KL divergences follow for the same reason.
 
 We leave FKEA out of the table because at 4,000 sequences it sits near its sample-size
-ceiling for the libraries we scored and separates nothing. The seqme authors report the same
-instability.
+ceiling for the libraries we scored and separates nothing, an instability the seqme authors
+report.
 
 We repeated the table with a 1-mer and 2-mer frequency embedding in place of ESM-2. No
 ranking changed except precision, which reads 0.876 against the baseline's 0.918 there. That
@@ -344,7 +344,7 @@ predicted safety window correlates with the measured index at Spearman 0.25, and
 Its N-terminal `LLLFLL` block is also long enough to trip the six-residue beta-sheet run
 rule, so this pipeline would have excluded it outright. Short cationic peptides that carry
 their hydrophobicity in one contiguous block are where the head fails. That 0.25 understates
-it. We chose those nine for high selectivity, so the range is narrow, and across the full
+it: we chose those nine for high selectivity, so the range is narrow, and across the full
 range it reaches AUROC 0.786.
 
 The ranked lists are also concentrated in one structural class. Every entry is a cationic
@@ -366,7 +366,7 @@ put it there.
 
 ## Reproducing the checkpoints
 
-The entry point runs from the committed checkpoints. This section rebuilds them.
+The entry point runs from the committed checkpoints, and this section rebuilds them.
 
 ```bash
 git clone https://github.com/szczurek-lab/amp-challenge-2027       ../amp-challenge-2027
