@@ -120,14 +120,14 @@ numbers match what the literature reports on a clean split.
 
 The hemolysis head takes ESM-2 t12 embeddings alongside the descriptors. Over the same 5,617
 sequences and the same cluster-grouped splits, descriptors alone reach AUROC 0.755, ESM-2
-alone 0.764, and the two together 0.786. Embeddings alone lose to the combination. The
-descriptors state charge and hydrophobicity outright, and a masked language model only
-implies them. We vendor the encoder at float16 under `checkpoint/esm2_t12_35M/`, so
-generation fetches nothing.
+alone 0.764, and the two together 0.786. Embeddings alone lose to the combination, because
+the descriptors state charge and hydrophobicity where a masked language model only implies
+them. We vendor the encoder at float16 under `checkpoint/esm2_t12_35M/`, so generation
+fetches nothing.
 
-We predict at `amidated=0`. Most potent DBAASP entries are C-terminally amidated and
-amidation raises potency several-fold, but this competition requires free termini, so we
-made the amidation state a model input and hold it at free acid.
+Most potent DBAASP entries are C-terminally amidated and amidation raises potency
+several-fold, but this competition requires free termini, so we made the amidation state a
+model input and predict at `amidated=0`.
 
 #### APEX-pathogen
 
@@ -140,7 +140,7 @@ also the model that lab used to score the AMP-Diffusion baseline, and that lab r
 APEX gives us a second opinion from a model trained elsewhere. On the 47 HydrAMP peptides
 with prospective wet-lab MIC values, it reaches Spearman 0.50 and AUROC 0.80 for active at
 <= 32 µM. Our ensemble appears to beat it there, but 32 of those 47 sequences are in APEX's
-training data, which makes that comparison leakage. The two agree at Spearman 0.69 only, so
+training data, which makes that comparison leakage. The two agree at only Spearman 0.69, so
 we blend ranks 55:45 toward our models, which cover all 20 strains and include a hemolysis
 head APEX does not have.
 
@@ -203,8 +203,8 @@ correct that with a price per residue. Selection maximizes `quality - compositio
 and after each pass we raise the price of any residue we over-produced. The prices only
 reorder candidates inside a cell, so the quotas and the property marginals do not change.
 
-A cell still covers a wide range. Two sequences can share all three bins and still differ in
-composition, so filling a cell from one corner covers less of the reference distribution
+A cell covers a wide range, so two sequences can share all three bins and still differ in
+composition, and filling a cell from one corner covers less of the reference distribution
 than its quota suggests. We k-means cluster the reference sequences inside each cell and
 split the cell's quota across those sub-regions in proportion to how many reference
 sequences each contains. That turns 53 cells into 453 sub-regions, with the sub-quotas
@@ -256,8 +256,8 @@ a wasted wet-lab slot in all five categories.
 Where our ensemble and APEX disagree about a candidate, we reduce its blended score. Taking
 the top of a noisy score over-represents candidates whose error happened to run favorably,
 and a peptide that only one of two independent models rates highly is usually one of those.
-Lowering their scores improves the average of the 25 peptides organizers draw, even though
-it also demotes some potent peptides.
+Lowering their scores improves the average of the 25 peptides organizers draw, though it
+also demotes some potent peptides.
 
 ## Phase-1 metrics
 
@@ -298,14 +298,14 @@ for the libraries we scored and separates nothing, an instability the seqme auth
 
 We repeated the table with a 1-mer and 2-mer frequency embedding in place of ESM-2. No
 ranking changed except precision, which reads 0.876 against the baseline's 0.918 there. That
-reading is an artifact. Our novelty term penalizes reuse of reference 6-mers, so a k-mer
-embedding measures what that term suppresses.
+reading is an artifact of our novelty term, which penalizes reuse of reference 6-mers, so a
+k-mer embedding measures what the term suppresses.
 
 ## The ranked lists
 
-Each of the five lists has 100 sequences. Entries are in the library and predicted active at
-16 µM or below, none shares an exact 10-mer with the reference set or is above a Levenshtein
-ratio of 0.75 to it, and no pair is above 0.65 to another.
+Each of the five lists has 100 sequences, all in the library and predicted active at 16 µM
+or below, none sharing an exact 10-mer with the reference set or standing above a
+Levenshtein ratio of 0.75 to it, and no pair above 0.65 to another.
 
 | list | predicted MIC50 | P(HC50 >= 128) | worst entry | predicted window | envelope |
 |---|---|---|---|---|---|
@@ -331,14 +331,14 @@ selectivity indices from 15 to 111, against poly-Ala, poly-Glu and a scrambled s
 peptides outrank the decoys, and our MIC predictions land within five-fold of the measured
 values.
 
-Our hemolysis head remains the weak one even after the ESM-2 rebuild. Over those nine its
+Our hemolysis head remains the weak one after the ESM-2 rebuild. Over those nine its
 predicted safety window correlates with the measured index at Spearman 0.25, and we predict
 50 µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
-This pipeline would have excluded it outright because its N-terminal `LLLFLL` block trips
-the six-residue beta-sheet run rule. Short cationic peptides that carry their hydrophobicity
-in one contiguous block are where the head fails. The Spearman 0.25 understates it. We chose
-those peptides for high selectivity, so their measured indices span a narrow range, and
-across the full range the head reaches AUROC 0.786.
+This pipeline would have excluded it because its N-terminal `LLLFLL` block trips the
+six-residue beta-sheet run rule. Short cationic peptides that carry their hydrophobicity in
+one contiguous block are where the head fails. That 0.25 understates the head, because we
+chose those peptides for high selectivity and their measured indices span a narrow range.
+Across the full range the head reaches AUROC 0.786.
 
 The ranked lists are also concentrated in one structural class. Entries are cationic
 amphipathic sequences of the helix-forming kind, and across the selectivity list the residue
@@ -351,9 +351,8 @@ Amphipathic beta-sheet designs were the second class we considered. We tested th
 hydrophobic moment against measured HC50 on 465 potent peptides, found the relationship weak
 and not monotonic, and added none.
 
-Arg makes up 43% of the cationic residues across the ranked lists, inside the 0 to 50% band
-where the measured safety window peaks. The envelope's Arg-share term and the fitted models
-put it there.
+The envelope's Arg-share term and the fitted models put Arg at 43% of the cationic residues
+across the ranked lists, inside the 0 to 50% band where the measured safety window peaks.
 
 ## Reproducing the checkpoints
 
@@ -379,8 +378,8 @@ entry point does not.
 
 ## Training data
 
-All sources are public. `data/training/README.md` lists them with licenses, row counts, and
-what they contribute.
+All sources are public, and `data/training/README.md` lists them with licenses, row counts
+and what they contribute.
 
 ## Layout
 
