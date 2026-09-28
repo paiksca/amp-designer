@@ -2,7 +2,7 @@
 
 Every source is public. Nothing proprietary or non-public was used, so nothing additional
 needs releasing under the competition's data rules. `build_data.py` assembles the files in
-this directory from the repositories listed below; re-run it to rebuild them.
+this directory from the repositories listed below. Re-run it to rebuild them.
 
 ## Assembled files
 
@@ -14,20 +14,20 @@ this directory from the repositories listed below; re-run it to rebuild them.
 | `challenge_reference.txt` | 39,448 | the challenge's own reference set, copied for convenience. Not training data. |
 
 `build_data.py` also assembles a 438,484-row table of SLAY display-screen growth-inhibition
-ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here; re-run
+ratios against *E. coli*. No shipped checkpoint uses it, so it is not committed here. Re-run
 `build_data.py` to produce it.
 
 Hemolysis data is read directly from the HemoPI2 release at training time and is not
 redistributed here, because that repository is GPL-3.0 licensed. The underlying HC50
 values come from DBAASP and Hemolytik, both public. Pooled with the direct DBAASP
-harvest, which adds 370 sequences HemoPI2 does not carry; the two agree at Spearman 0.916
+harvest, which adds 370 sequences HemoPI2 does not carry. The two agree at Spearman 0.916
 on the 1,306 they share, which is the check that they measure the same thing before being
 pooled.
 
 The direct harvest is why the MIC table is 65% larger in distinct sequences than the
 redistributed snapshot: 12,993 against 7,872, with 4,218 of the new ones on panel species.
 `work/data/dbaasp/harvest.py` fetches the records and `parse.py` flattens them. The flat
-table is 17 MB and is not committed; rebuild it with those two scripts and point
+table is 17 MB and is not committed. Rebuild it with those two scripts and point
 `AMP_DBAASP` at the result.
 
 ## Upstream sources
@@ -67,7 +67,7 @@ AUROC 0.801 to 0.750 even though it added 59% more sequences. `dbaasp_harvest.py
 recorded as ">100 µM" or similar, and dropping them throws away the safe class while
 treating them as measurements understates safety. Values censored at or above the
 competition's 128 µM ceiling are clipped to it, since the ceiling is where the scale ends
-anyway; values censored below it are ambiguous and are dropped rather than guessed. That
+anyway. Values censored below it are ambiguous and are dropped rather than guessed. That
 leaves 5,747 sequences with a usable hemolysis label against 1,957 from HemoPI2 alone.
 
 Hemolysis records are also restricted to human erythrocytes. Sheep, rabbit and horse red
@@ -79,7 +79,7 @@ cells differ in sensitivity, and Phase 2 measures human cells.
   residues, matching the competition's own rules.
 - MIC concentrations given in µg/ml are converted to µM using the molecular weight computed
   from the sequence with average residue masses plus water.
-- A concentration written as `>X` is recorded at X with `censored = True`; it means the
+- A concentration written as `>X` is recorded at X with `censored = True`, meaning the
   assay never reached inhibition.
 - Replicate measurements are reduced to the median per (sequence, species, amidation), and
   MIC is capped at the competition's 64 µM ceiling before the log2 transform.
