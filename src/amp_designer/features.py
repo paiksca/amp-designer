@@ -159,7 +159,7 @@ def hydrophobic_moment(
     """Eisenberg's muH: the largest moment over any window of `window` residues.
 
     For sequences shorter than the window the whole sequence is used. The 100 deg
-    step is the alpha-helical periodicity; 180 deg would give the beta-strand moment.
+    step is the alpha-helical periodicity. 180 deg would give the beta-strand moment.
     """
     n, max_len = idx.shape
     rad = np.deg2rad(angle) * np.arange(max_len)
@@ -398,7 +398,7 @@ def hydrophobic_face_fraction(sequences: list[str], angle: float = 100.0) -> np.
 
 
 def kmer_counts(sequences: list[str], k: int = 2) -> np.ndarray:
-    """Normalised k-mer frequency matrix, 20**k columns."""
+    """Normalized k-mer frequency matrix, 20**k columns."""
     dim = 20**k
     out = np.zeros((len(sequences), dim), dtype=np.float32)
     for i, s in enumerate(sequences):

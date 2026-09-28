@@ -1,6 +1,6 @@
 """Assemble the public peptide datasets this project trains on.
 
-Every source is a public repository or database; `data/training/README.md` lists
+Every source is a public repository or database. `data/training/README.md` lists
 them with their licences. Clone them first (see that file), then point
 `AMP_UPSTREAM` at the directory holding the clones and run:
 

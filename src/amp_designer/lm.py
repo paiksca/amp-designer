@@ -4,7 +4,7 @@ The model is a decoder-only transformer over the 20 amino acids. Each sequence i
 prefixed with four control tokens describing length, net charge, predicted Gram-
 negative potency, and predicted hemolytic safety. Conditioning on properties is
 what lets sampling reproduce the reference AMP property distributions by
-construction rather than by rejection, which is one of the four Phase-1 criteria.
+construction, not by rejection, which is one of the four Phase-1 criteria.
 
 Predicted potency and safety come from this project's own MIC and hemolysis
 ensembles, so the control signal is self-distilled from public assay data.
@@ -192,7 +192,7 @@ def sample(
     logits = model(idx, caches=caches, offset=0)[:, -1, :].float()
     offset = idx.shape[1]
 
-    # Rows that have emitted EOS are dropped from the batch rather than carried to
+    # Rows that have emitted EOS are dropped from the batch, not carried to
     # the end on padding. Most peptides finish well before 50 residues, so keeping
     # them would roughly double the work.
     live = torch.arange(n)

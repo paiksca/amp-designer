@@ -156,7 +156,7 @@ def kmer_hit_fraction(
 ) -> np.ndarray:
     """Share of a sequence's k-mers that also occur in the reference set.
 
-    Phase 1 measures novelty against known AMPs by normalised alignment bit-score
+    Phase 1 measures novelty against known AMPs by normalized alignment bit-score
     over the whole 50,000-sequence library, which is far too expensive to compute
     inside the entry point. This is the cheap stand-in: a long shared substring is
     exactly what drives an alignment score, so the two track each other closely

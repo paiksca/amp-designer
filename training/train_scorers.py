@@ -1,9 +1,9 @@
 """MIC, hemolysis, and AMP-classifier ensembles, and their grouped-CV report.
 
-Gradient boosting is used rather than an MLP: on this tabular, few-thousand-row
-data it was clearly better, most of all for hemolysis (Spearman 0.52 against 0.42,
-AUROC 0.77 against 0.67). The implementation is scikit-learn's histogram boosting
-rather than xgboost, because xgboost and torch load duplicate OpenMP runtimes and
+Gradient boosting beat an MLP on this tabular, few-thousand-row
+data, most of all for hemolysis (Spearman 0.52 against 0.42, AUROC 0.77 against
+0.67). The implementation is scikit-learn's histogram boosting
+and not xgboost, because xgboost and torch load duplicate OpenMP runtimes and
 segfault in one process on macOS, and the entry point needs both.
 
 Splits are grouped by MMseqs2 cluster at 50% identity. DBAASP is dense with
@@ -195,8 +195,8 @@ def hemolysis_target() -> pd.DataFrame:
         d = pd.read_csv(dbaasp)
         d = d[d["human_hc50_uM"].notna()].drop_duplicates("sequence")
         # A censored value is a lower bound. One written ">150" is safely above the
-        # 128 µM ceiling and can be clipped to it; one written ">100" could be
-        # anywhere above 100 and is dropped rather than guessed.
+        # 128 µM ceiling and can be clipped to it. One written ">100" could be
+        # anywhere above 100 and is dropped, never guessed.
         ambiguous = d["hc50_censored"] & (d["human_hc50_uM"] < HC50_CEILING)
         d = d[~ambiguous].copy()
         d.loc[d["hc50_censored"], "human_hc50_uM"] = HC50_CEILING

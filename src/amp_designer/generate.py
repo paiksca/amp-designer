@@ -5,7 +5,7 @@ Pipeline
 1. Sample a large candidate pool from the property-conditioned peptide LM. Control
    vectors are drawn from a table of combinations observed in the training corpus,
    reweighted toward predicted potency and predicted hemolytic safety, so the pool
-   sits in the potent corner of the known-AMP distribution instead of outside it.
+   sits in the potent corner of the known-AMP distribution, not outside it.
 2. Drop anything that breaks a competition rule, duplicates another candidate, or
    matches the reference antibacterial set exactly.
 3. Score every survivor with the MIC, hemolysis, and AMP-classifier ensembles.
@@ -86,7 +86,7 @@ def _resolve(*parts: str) -> Path:
 
 def _set_determinism() -> None:
     # Two runs on one machine must agree byte for byte. A fixed thread count keeps
-    # every reduction in the same order; the seeds are set per call site.
+    # every reduction in the same order. The seeds are set per call site.
     torch.set_num_threads(max(1, min(8, os.cpu_count() or 1)))
     torch.use_deterministic_algorithms(True, warn_only=True)
 
@@ -168,14 +168,14 @@ def coarse_quality(
 
     `surrogate:mbc` is a head distilled from MBC-Attention, one of the three
     surrogates the proposal names for its activity family. It ranks the library
-    within a cell only; the top-100 objectives leave it out, because it is
+    within a cell only. The top-100 objectives leave it out, because it is
     demonstrably wrong in places and a wet-lab slot is too expensive to spend on
     a model that scores poly-glutamate at 1.8 µM.
 
     `reuse` is the share of a sequence's 6-mers that also occur in the reference
-    set. Phase 1 scores novelty against known AMPs by normalised alignment
+    set. Phase 1 scores novelty against known AMPs by normalized alignment
     bit-score over the whole library, and a long shared substring is what drives
-    an alignment score, so penalising k-mer reuse pushes the library away from the
+    an alignment score, so penalizing k-mer reuse pushes the library away from the
     reference in sequence space without moving its composition.
     """
     risk = synthesis.risk_score(sequences)
@@ -239,7 +239,7 @@ def pick_top(
     order = np.lexsort((np.arange(len(sequences)), -quality))
     eligible = [int(i) for i in order if strict[i]]
     if len(eligible) < top_k * 4:
-        # Too few survivors to fill the list; fall back to ranking every candidate.
+        # Too few survivors to fill the list, so fall back to ranking every candidate.
         eligible = [int(i) for i in order]
 
     chosen: list[int] = []
@@ -272,7 +272,7 @@ def pick_top(
             per_cluster[c] = per_cluster.get(c, 0) + 1
             chosen.append(i)
 
-    # Relax the spacing rather than return a short list, which the validator rejects.
+    # Relax the spacing, because the validator rejects a short list.
     if len(chosen) < top_k and max_pairwise < 1.0:
         return pick_top(
             sequences, quality, cluster, reference, top_k, long_kmers=long_kmers,
@@ -400,7 +400,7 @@ class _Build:
         )
         apex_cluster = short_cluster[apex_idx]
 
-        # The descriptor hemolysis head ranks the pool cheaply; the ESM head is
+        # The descriptor hemolysis head ranks the pool fast. The ESM head is
         # more accurate (AUROC 0.786 against 0.755 on cluster-grouped splits) and
         # runs here, over the few thousand candidates that actually become the
         # ranked lists. The gate is re-applied on the better estimate.
@@ -423,7 +423,7 @@ class _Build:
 
         tops: dict[str, list[int]] = {}
         for name in sorted(categories.OBJECTIVES):
-            # Re-rank on the ESM hemolysis estimate rather than the coarse one.
+            # Re-rank on the ESM hemolysis estimate, which supersedes the coarse head.
             refined_q = categories.OBJECTIVES[name](
                 apex_scores, apex_panel, apex_env, apex_risk, apex_scores["amp:clf"]
             ).astype(np.float32)
@@ -498,7 +498,7 @@ def generate(
 ) -> list[str]:
     """Return `n_sequences` designed peptides.
 
-    `length` is the maximum residue count, capped at the competition's 50; the
+    `length` is the maximum residue count, capped at the competition's 50. The
     library spans 8 to that bound, following the reference set's length profile.
     """
     return list(_build(n_sequences, length, seed, DEFAULT_TOP_K).library)
@@ -538,7 +538,7 @@ def main() -> None:
 
     The category is read from the invoked script's name, and output goes to a
     directory of that same name. The challenge template's validator runs
-    `uv run generate` and reads `generate/`; the starter kits' validator runs one
+    `uv run generate` and reads `generate/`. The starter kits' validator runs one
     of the five category scripts and reads the matching directory. Exposing all
     six satisfies either one, and ranks separately for every category that Phase 2
     scores.

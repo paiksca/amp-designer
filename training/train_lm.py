@@ -69,7 +69,7 @@ def build_control_table(controls: np.ndarray) -> None:
     """Save the observed control combinations with potency- and safety-tilted mass.
 
     Sampling only ever asks for a combination the corpus actually contains, which
-    keeps the conditioning in distribution; the tilt shifts mass inside that set.
+    keeps the conditioning in distribution. The tilt shifts mass inside that set.
     """
     combos, counts = np.unique(controls, axis=0, return_counts=True)
     tilt = np.exp(POTENCY_TILT * combos[:, 2] + SAFETY_TILT * combos[:, 3])

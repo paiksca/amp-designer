@@ -2,7 +2,7 @@
 
 Phase 2 scores five categories against different slices of the 20-strain panel,
 so the ranked list that wins one is not the list that wins another. Both official
-baselines expose only `generate_broad_spectrum`; this submission ranks separately
+baselines expose only `generate_broad_spectrum`. This submission ranks separately
 for all five.
 
 Every objective is expected value over the whole list, not best case, because 25
@@ -20,10 +20,10 @@ MIC_CEILING_LOG2 = 6.0   # log2(64 µM)
 # No ranked candidate may fall below this predicted probability of HC50 >= 128 µM.
 # Potency and hemolysis both rise with charge and hydrophobicity, so ranking on
 # potency alone walks straight into the hemolytic corner: an earlier build came out
-# at 30% predicted safe against a 37% base rate among potent peptides. A gate is the
-# right instrument rather than a larger weight, because the models rank potency far
-# better than they rank hemolysis, and one severely hemolytic peptide costs a
-# wet-lab slot in every category, not only in selectivity.
+# at 30% predicted safe against a 37% base rate among potent peptides. A hard cut
+# suits this better than a heavier weight, because the models rank potency far
+# better than they rank hemolysis, and a severely hemolytic peptide is a wasted
+# wet-lab slot in all five categories.
 SAFETY_FLOOR = 0.50
 
 # The Phase-2 panel: 15 Gram-negative strains and 5 Gram-positive.
@@ -36,7 +36,7 @@ PANEL_COUNTS = {
     "mic:sp_efaec": 2,        # E. faecalis 700802, E. faecium 700221
     "mic:sp_bsubt": 1,        # ATCC 23857
 }
-# E. cloacae and the two S. enterica strains have no species head of their own;
+# E. cloacae and the two S. enterica strains have no species head of their own, so
 # their three panel slots fall back to the pooled Gram-negative model.
 GRAM_NEG_FALLBACK = 3
 
@@ -234,7 +234,7 @@ APEX_OBJECTIVES = {
 # APEX and this repository's MIC ensemble are about equally accurate on prospective
 # peptides (AUROC 0.80 each, honestly measured) and agree only at Spearman 0.69, so
 # the blend is close to even, tilted to the in-house models because they cover all
-# 20 panel strains rather than 11 and carry a hemolysis head APEX does not have.
+# 20 panel strains, where APEX covers 11, and carry a hemolysis head APEX lacks.
 APEX_WEIGHT = 0.45
 
 
@@ -242,7 +242,7 @@ APEX_WEIGHT = 0.45
 # top of a noisy score over-represents candidates whose error happened to be
 # favourable, and a peptide that only one of two independent models likes is the
 # usual shape of that. Since the team score is the mean over 25 peptides drawn at
-# random, shrinking those optimistic outliers is worth more than the few genuine
+# random, lowering those optimistic outliers helps more than the few genuine
 # finds it costs.
 DISAGREEMENT_PENALTY = 0.25
 

@@ -10,14 +10,14 @@ It earns its place by being independent, not by being better. On the 47 HydrAMP
 peptides with prospective wet-lab MIC values, APEX reaches Spearman 0.50 and AUROC
 0.80 for active at <= 32 µM. This repository's own MIC ensemble appears to score
 higher there, but 32 of those 47 sequences are in its training data, so that
-comparison is leakage; its honest number is the grouped-CV AUROC of 0.80. Two
+comparison is leakage, and its honest number is the grouped-CV AUROC of 0.80. Two
 independent models of about equal strength are worth ensembling, and they agree
 only at Spearman 0.69.
 
 Four of the eight released checkpoints are shipped. Against the full eight they
-rank 4,000 peptides at Spearman 0.983, for 81 MB instead of 220 MB.
+rank 4,000 peptides at Spearman 0.983, at 81 MB against 220 MB.
 
-The checkpoints are pickled `nn.Module` objects rather than state dicts, so
+The checkpoints are pickled `nn.Module` objects, not state dicts, so
 loading them runs pickle and needs the defining class importable under its
 original name. Both are handled below.
 """

@@ -9,7 +9,7 @@ in distinct MIC sequences.
     AMP_DBAASP=data/dbaasp/dbaasp_flat.csv python -m training.build_data
 
 The fetch is resumable: a record already on disk is skipped, so re-running it
-continues rather than restarting. The server throttles above about eight workers,
+continues from where it stopped. The server throttles above about eight workers,
 so raising the worker count does not help. A full pass takes a few hours.
 
 DBAASP is CC BY 4.0. Cite Pirtskhalava et al., Nucleic Acids Research 49:D288
@@ -53,7 +53,7 @@ def to_micromolar(value, unit, seq: str) -> float | None:
         return None
     if isinstance(unit, dict):
         unit = unit.get("name") or unit.get("value")
-    # Concentrations are written as "32", ">1000" or "2.1-4.2"; take the leading
+    # Concentrations are written as "32", ">1000" or "2.1-4.2", so take the leading
     # number and keep the censoring flag separately.
     match = NUMBER.match(str(value))
     if not match:
@@ -149,7 +149,7 @@ def parse(raw_dir: Path, out: Path) -> int:
         for entry in record.get("targetActivities") or []:
             # DBAASP records several potency measures under one list. MBC, IC50,
             # MFC, LC, LD50 and EC50 are different quantities on different scales,
-            # and MIC50 and MIC90 are panel statistics rather than per-strain
+            # and MIC50 and MIC90 are statistics over a panel, where MIC is per-strain
             # values. Pooling them cost 0.05 AUROC when it was tried.
             if _name_of(entry.get("activityMeasureGroup")) != "MIC":
                 continue

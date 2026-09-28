@@ -1,6 +1,6 @@
 """Inference for the shipped MIC, hemolysis, and AMP-classifier ensembles.
 
-Training lives in `training/train_scorers.py`; this module rebuilds nothing and
+Training lives in `training/train_scorers.py`. This module rebuilds nothing and
 only runs the fitted scikit-learn ensembles stored in `checkpoint/scorers.pkl`.
 
 Predictions are made at `amidated=0`. Most potent entries in DBAASP are

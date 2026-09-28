@@ -10,14 +10,14 @@ Percentages below are how often a published AMP trips each rule, measured over
 say what each filter costs in diversity.
 
 Hard rejects, with the chemistry behind each:
-  Cys (19.0%)      free thiols oxidise and scramble; no cyclisation is allowed here
-  Met (13.8%)      oxidises to the sulfoxide during cleavage and storage
-  D-[GASTCRDN]     aspartimide formation under Fmoc base; Asp-Gly is worst (7.2%)
+  Cys (19.0%)      free thiols oxidize and scramble, and no cyclization is allowed here
+  Met (13.8%)      oxidizes to the sulfoxide during cleavage and storage
+  D-[GASTCRDN]     aspartimide formation under Fmoc base, worst at Asp-Gly (7.2%)
   N-G (3.1%)       deamidates through the same succinimide intermediate
   6+ AILMFVWCY     on-resin beta-sheet aggregation, the classic difficult peptide (4.6%)
   GRAVY > 1.0      needs DMSO to dissolve at assay stock concentration (9.5%)
   charge < +2      precipitates in assay buffer near neutral (12.4%)
-  N-terminal Q     cyclises to pyroglutamate; free termini leave no capping fix (1.0%)
+  N-terminal Q     cyclizes to pyroglutamate, and free termini allow no capping (1.0%)
   QQ or NN (4.9%)  amyloid-like aggregation and deamidation
   4+ identical     a single deletion is then invisible by mass (2.5% at 5+)
 
@@ -127,14 +127,14 @@ def strict_flags(sequences: list[str]) -> np.ndarray:
         elif charge[i] < 2.0 or gravy[i] > 1.0:
             out[i] = False
         elif not (11 <= len(s) <= 26):
-            # Below 11 residues potency is rare; above 26 crude purity and cost
+            # Below 11 residues potency is rare. Above 26 crude purity and cost
             # both worsen, and the measured activity envelope ends around 22.
             out[i] = False
     return out
 
 
 def risk_score(sequences: list[str]) -> np.ndarray:
-    """A graded 0-3 penalty used to rank rather than exclude."""
+    """A graded 0-3 penalty used to rank, never to exclude."""
     charge = features.net_charge(sequences)
     idx, lengths = features.encode(sequences)
     comp = features.composition(idx, lengths)
@@ -166,8 +166,8 @@ def envelope_score(sequences: list[str]) -> np.ndarray:
     """How well a sequence sits in the measured potent-and-safe envelope, 0 to 1.
 
     Derived from a Mann-Whitney comparison of hemolytic against safe peptides
-    within the potent subset (median MIC <= 8 µM, n = 498; hemolytic HC50 <= 32 µM,
-    n = 196; safe HC50 >= 128 µM, n = 125). Only descriptors that actually
+    within the potent subset (median MIC <= 8 µM, n = 498, hemolytic HC50 <= 32 µM,
+    n = 196, safe HC50 >= 128 µM, n = 125). Only descriptors that actually
     separated the two groups are used:
 
         Eisenberg mean hydrophobicity  p = 1e-08   safe -0.03, hemolytic +0.18
@@ -182,7 +182,7 @@ def envelope_score(sequences: list[str]) -> np.ndarray:
     here however often the folklore invokes them. Cationic residues placed on the
     hydrophobic face were tested too, after a report of a several-hundred-fold HC50
     gain on dermaseptin S4, and did not replicate across 465 potent peptides with
-    measured HC50 (Spearman -0.009, p = 0.54); only the 25 sequences carrying three
+    measured HC50 (Spearman -0.009, p = 0.54). Only the 25 sequences carrying three
     or more showed anything, and those were worse. Net charge is represented only
     through charge density, which does separate: +5 on 16 residues is safe, +5 on
     26 is not.
@@ -194,7 +194,7 @@ def envelope_score(sequences: list[str]) -> np.ndarray:
 
     This is a prior, not a solution. Applying the best of these filters to the
     potent subset moved P(HC50 >= 128 µM) only from 0.25 to 0.31, which is why the
-    ranked list is also spread across clusters rather than concentrated on whatever
+    ranked list is also spread across clusters and never concentrated on whatever
     scores highest.
     """
     idx, lengths = features.encode(sequences)

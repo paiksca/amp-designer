@@ -1,16 +1,16 @@
 """Library selection: turn a large candidate pool into the 50,000-sequence library.
 
 Phase 1 scores four families at once and they pull against each other. Novelty and
-diversity want sequences far from known AMPs and from each other; distributional
+diversity want sequences far from known AMPs and from each other. Distributional
 similarity and property conformity want the library to look exactly like known
-AMPs; surrogate activity wants the potent corner of that distribution.
+AMPs, and surrogate activity wants the potent corner of that distribution.
 
 The selection resolves this by fixing the *distribution* and spending the freedom
 inside it:
 
   - Quotas over a (length, charge, hydrophobic moment) grid are copied from the
     reference AMP set with no reweighting. Those three axes are the ones Phase 1
-    names for property conformity, and copying rather than tilting them is what
+    names for property conformity, and copying them unchanged is what
     keeps KL divergence, precision and recall from paying for potency.
   - Inside every cell, candidates are taken one per sequence cluster in descending
     quality, so coverage is spent before any cluster contributes a second member.
@@ -151,8 +151,8 @@ def select(
             continue
 
         # With sub-quotas the cell's allowance is split across regions of the
-        # reference inside it, so the library reaches across the cell rather than
-        # filling it from one corner. Every sub-quota sums back to the cell quota,
+        # reference inside it, so the library reaches across the cell and does not
+        # fill it from one corner. Every sub-quota sums back to the cell quota,
         # so the marginals are unchanged.
         budgets = sub_quotas.get(cell) if sub_quotas else None
         if budgets is not None and sub_assign is not None:
@@ -198,7 +198,7 @@ def select(
                 take(i)
                 got += 1
 
-    # Cells the candidate pool could not fill leave a shortfall; make it up
+    # Cells the candidate pool could not fill leave a shortfall. Make it up
     # globally, still spreading over clusters before repeating any.
     if len(chosen) < total:
         for r in range(1, max_rounds + 1):
@@ -227,7 +227,7 @@ def select(
 def composition_gap(sequences: list[str], reference: list[str]) -> float:
     """L2 distance between mean amino-acid compositions.
 
-    Reported rather than optimised directly. With a small protein language model
+    We report this and do not optimize it directly. With a small protein language model
     most of the Frechet distance is carried by composition, so this is the cheapest
     early warning that the library has drifted off the reference distribution.
     """
