@@ -1,9 +1,9 @@
 # Antimicrobial peptide design by distribution matching
 
 A submission for [AMP Challenge 2027](https://github.com/szczurek-lab/amp-challenge-2027):
-we condition a peptide language model on properties, then select its output to match the
-known-AMP distribution cell by cell and use the remaining freedom for diversity, predicted
-potency, predicted low hemolysis, and synthesis risk.
+we condition a peptide language model on properties. Quotas copied from the known-AMP
+distribution set how many sequences go in each cell, and diversity, predicted potency,
+predicted low hemolysis and synthesis risk decide which ones.
 
 ```bash
 uv run generate                     # template validator: writes generate/
@@ -47,9 +47,9 @@ We sample 300,000 candidates, using only control combinations the training corpu
 and reweighting toward the potent, non-hemolytic end of that set. We then build the library
 by copying the (length, net charge, hydrophobic moment) histogram of the reference
 antibacterial set without reweighting, and inside each cell we take one candidate per
-sequence cluster in descending quality. Because we fix the distribution and use the freedom
-inside it, one library satisfies Phase 1's four metric families at once, which otherwise
-conflict.
+sequence cluster in descending quality. Because the quotas fix the distribution and we
+choose only within each cell, one library satisfies Phase 1's four metric families at once,
+which otherwise conflict.
 
 We rank the top-100 on what Phase 2 scores. Organizers draw 25 peptides at random and
 average them, so we optimize expected value across the list and hold quality flat along it.
