@@ -38,10 +38,10 @@ official baselines expose only `generate_broad_spectrum`.
 ## Abstract
 
 We train a 1.8M-parameter decoder-only transformer on 44,585 known antibacterial peptides
-drawn from public databases. Each training sequence has a four-token control prefix giving
-its length bin, net-charge bin, predicted Gram-negative potency quintile, and predicted
-hemolytic-safety quartile. We compute the last two with gradient-boosted ensembles fitted
-here on DBAASP, GRAMPA and HemoPI2 assay data, so the conditioning signal comes from
+drawn from public databases. Each training sequence begins with a four-token control prefix
+giving its length bin, net-charge bin, predicted Gram-negative potency quintile, and
+predicted hemolytic-safety quartile. We compute the last two with gradient-boosted ensembles
+fitted here on DBAASP, GRAMPA and HemoPI2 assay data, so the conditioning signal comes from
 measured activity.
 
 We sample 300,000 candidates, using only control combinations the training corpus contains
