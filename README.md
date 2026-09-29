@@ -1,4 +1,4 @@
-# amp-designer
+# Antimicrobial peptide design by distribution matching
 
 A submission for [AMP Challenge 2027](https://github.com/szczurek-lab/amp-challenge-2027):
 we condition a peptide language model on properties, then select its output to match the
