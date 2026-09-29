@@ -209,8 +209,8 @@ A cell covers a wide range, so two sequences can share all three bins and still 
 composition, and filling a cell from one corner covers less of the reference distribution
 than its quota suggests. We k-means cluster the reference sequences inside each cell and
 split the cell's quota across those sub-regions in proportion to how many reference
-sequences each contains. That turns 53 cells into 453 sub-regions, with the sub-quotas
-summing back to the cell quota.
+sequences each contains. That turns 103 cells into 453 sub-regions, 53 of them split, with
+the sub-quotas summing back to the cell quota.
 
 The split raises clipped coverage from 0.512 to 0.544 and clipped density from 0.580 to
 0.621, with recall, precision, conformity, the Frechet distance and KL-length all better. It
