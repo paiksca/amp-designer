@@ -333,8 +333,8 @@ and the highest hemolytic safety.
 One draw of 25 peptides is scored in all five categories, so only the list a validator reads
 is assayed. `generate` and `generate_broad_spectrum` produce the same list, so that is the
 one tested whichever validator runs. It sits within 4% of the best of the five on mean
-predicted MIC50, safety window and hemolytic safety, so ranking per category costs nothing
-when a single list is read.
+predicted MIC50, safety window and hemolytic safety, so ranking per category does no harm to
+the list that is tested.
 
 ## What the models get wrong
 

@@ -16,9 +16,9 @@ Re-run it to rebuild them.
 
 HemoPI2 is GPL-3.0 licensed, so we read its hemolysis data at training time and keep it out
 of this repository. Its HC50 values come from DBAASP and Hemolytik, both public. We pool
-them with the direct DBAASP harvest, which adds 370 sequences HemoPI2 does not have. The two
-agree at Spearman 0.916 on the 1,306 they share, which is our check that they measure the
-same thing.
+them with the direct DBAASP harvest, which adds 370 sequences HemoPI2 does not have. HemoPI2
+and the harvest agree at Spearman 0.916 on the 1,306 they share, which is our check that
+they measure the same thing.
 
 The direct harvest is why the MIC table is 65% larger in distinct sequences than the
 redistributed snapshot: 12,996 against 7,872, with 4,218 of the new ones on panel species.
