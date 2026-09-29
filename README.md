@@ -137,8 +137,8 @@ We vendor four of the eight released APEX-pathogen checkpoints under `checkpoint
 et al., de la Fuente lab, *Nature Microbiology* 2025, MIT licensed). APEX predicts MIC in µM
 against an 11-pathogen panel, and all 11 strains are on this competition's 20-strain panel:
 the 5 Gram-positive strains and 6 of the 15 Gram-negative, including 4 of the 8 MDR
-isolates. It is also the model that lab used to score the AMP-Diffusion baseline, and that
-lab runs Phase 2.
+isolates. It is also the model that lab used to score the AMP-Diffusion baseline. That lab
+runs Phase 2.
 
 APEX was trained by another group on other data, so it gives us a second opinion. On the 47
 HydrAMP peptides with prospective wet-lab MIC values, it reaches Spearman 0.50 and AUROC
@@ -154,8 +154,8 @@ We score in four stages, running the slow models only on the candidates that mat
 Four fast heads score all 300,000 candidates, and we build the library from those scores,
 where a within-cell ranking only needs to be roughly right. The full per-species ensemble
 runs over a 90,000-sequence shortlist. APEX re-ranks the 3,552 candidates that lead any
-category and clear both the strict synthesis rules and the hemolysis gate, and the ESM
-hemolysis head runs over the same 3,552, which settles the ranked lists.
+category and clear both the strict synthesis rules and the hemolysis gate. The ESM hemolysis
+head runs over the same 3,552, which settles the ranked lists.
 
 We take the shortlist cell by cell because the high-scoring end of the pool is more cationic
 than the reference set and a global cut would re-shape the library. The coarse and refined
@@ -175,7 +175,7 @@ predicted MIC of 19.2 µM against 27.4 µM for real AMPs and 14.5 µM for the Hy
 We lose to HydrAMP because of the charge choice described under Selection.
 
 We use the distilled head for the library only and leave it out of the top-100 objectives.
-MBC-Attention scores poly-glutamate at 1.8 µM, and we will not commit a wet-lab slot on a
+MBC-Attention scores poly-glutamate at 1.8 µM, so we will not commit a wet-lab slot on a
 model with that failure mode.
 
 ### 3. Selection
@@ -294,7 +294,7 @@ the competition names, at 4,000 sequences per side.
 The conformity score and the diversity land on the held-out reference set's value, while the
 sequences stay novel by exact match. Recall, clipped density and clipped coverage are four
 to five times the baseline's, as the quota grid covers the reference distribution where the
-baseline occupies one corner of it, and the KL divergences follow for the same reason.
+baseline occupies one corner of it. The KL divergences follow for the same reason.
 
 We leave FKEA out of the table because at 4,000 sequences it is near its sample-size ceiling
 for the libraries we scored and separates nothing, an instability the seqme authors report.
@@ -346,8 +346,8 @@ peptides outrank the decoys, and our MIC predictions land within five-fold of th
 values.
 
 Our hemolysis head remains the weakest after the ESM-2 rebuild. Over those nine its
-predicted safety window correlates with the measured index at Spearman 0.25, and we predict
-50 µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
+predicted safety window correlates with the measured index at Spearman 0.25. We predict 50
+µM for dhvar5 (`LLLFLLKKRKKRKY`), the most selective control, against a measured 120 µM.
 This pipeline would have excluded it because its N-terminal `LLLFLL` block trips the
 six-residue beta-sheet run rule. Short cationic peptides that carry their hydrophobicity in
 one contiguous block are where the head fails. That 0.25 understates the head because we
