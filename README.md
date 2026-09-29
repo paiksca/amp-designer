@@ -1,10 +1,10 @@
 # Antimicrobial peptide design by distribution matching
 
-A submission for [AMP Challenge 2027](https://github.com/szczurek-lab/amp-challenge-2027):
-we condition a peptide language model on properties, then select 50,000 of its outputs so
-the library's length, charge and hydrophobic moment distribution matches the reference set,
-ranking within each cell by diversity, predicted potency, predicted low hemolysis and
-synthesis risk.
+Samuel Paik-Heintz's submission to [AMP Challenge
+2027](https://github.com/szczurek-lab/amp-challenge-2027). We condition a peptide language
+model on properties, then select 50,000 of its outputs so the library's length, charge and
+hydrophobic moment distribution matches the reference set, ranking within each cell by
+diversity, predicted potency, predicted low hemolysis and synthesis risk.
 
 ```bash
 uv run generate                     # template validator: writes generate/
@@ -432,7 +432,8 @@ scripts/         the challenge validator, copied verbatim
 ## Use of AI assistants
 
 The code in this repository was written with Claude (Anthropic) under human direction. The
-method design, the data sources and the submitted content are the author's responsibility.
+method design, the data sources and the submitted content are Samuel Paik-Heintz's
+responsibility.
 
 ## License
 
