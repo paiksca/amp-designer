@@ -385,8 +385,8 @@ uv run python -m training.train_hemolysis_esm            # adds the ESM-2 hemoly
 uv run python -m training.train_lm                       # writes checkpoint/peptide_lm.pt
 ```
 
-`training/build_controls.py` rebuilds `checkpoint/controls.npz` on its own, with different
-tilts toward potency and hemolytic safety, without retraining the language model.
+`training/build_controls.py` rebuilds `checkpoint/controls.npz` with different tilts toward
+potency and hemolytic safety, without retraining the language model.
 
 `train_hemolysis_esm.py` adds the `hem_esm:` heads to the bundle `train_scorers.py` wrote,
 so run it second. Both need MMseqs2 on `PATH` for the grouped cross-validation splits, and
