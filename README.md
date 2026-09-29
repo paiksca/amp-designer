@@ -66,8 +66,8 @@ any two ranked sequences.
 We vendor APEX-pathogen because it predicts micromolar MIC for 11 of the 20 panel strains
 and comes from the laboratory running Phase 2. We rank-blend APEX with our ensembles at 45%
 and penalize candidates where they disagree. We re-estimate hemolysis with an ESM-2 head
-over the few thousand candidates that reach the lists because it is our weakest prediction
-and the selectivity category depends on it.
+over the 3,552 candidates that reach the lists because it is our weakest prediction and the
+selectivity category depends on it.
 
 We apply no manual curation.
 
@@ -96,8 +96,9 @@ sequences and the warm pass supplies diversity.
 
 `checkpoint/scorers.pkl.gz` contains gradient-boosted ensembles fitted in
 `training/train_scorers.py`. We measure accuracy with five-fold cross-validation grouped by
-MMseqs2 cluster at 50% identity, as DBAASP is dense with analogue series and an ungrouped
-split reports roughly twice the real accuracy.
+MMseqs2 cluster at 50% identity, as DBAASP is dense with analogue series. On the
+Gram-negative head an ungrouped split reports Spearman 0.691 against the grouped 0.557, and
+AUROC 0.844 against 0.777.
 
 | head | n | Spearman | AUROC |
 |---|---|---|---|

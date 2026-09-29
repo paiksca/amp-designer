@@ -55,8 +55,7 @@ We measured both, and both lowered accuracy.
 
 **Potency measures are not interchangeable.** A peptide's `targetActivities` list mixes MIC
 with MBC, IC50, MFC, LC, LD50 and EC50, and with MIC50 and MIC90, which are statistics over
-a panel where MIC is a per-strain value. In a 4,000-record sample the split was 22,803 MIC
-against roughly 6,900 of everything else. Pooling them dropped the Gram-negative model from
+a panel where MIC is a per-strain value. Pooling them dropped the Gram-negative model from
 AUROC 0.801 to 0.750 even though it added 59% more sequences. `dbaasp_harvest.py` keeps
 `activityMeasureGroup == "MIC"` and nothing else.
 

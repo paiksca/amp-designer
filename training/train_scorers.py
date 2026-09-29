@@ -7,7 +7,8 @@ and not xgboost, because xgboost and torch load duplicate OpenMP runtimes and
 segfault in one process on macOS, and the entry point needs both.
 
 Splits are grouped by MMseqs2 cluster at 50% identity. DBAASP is dense with
-analogue series, and an ungrouped split reports roughly twice the real accuracy.
+analogue series. On the Gram-negative head an ungrouped split reports
+Spearman 0.691 against the grouped 0.557, and AUROC 0.844 against 0.777.
 """
 
 from __future__ import annotations
