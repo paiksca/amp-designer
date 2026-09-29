@@ -1,9 +1,10 @@
 # Antimicrobial peptide design by distribution matching
 
 A submission for [AMP Challenge 2027](https://github.com/szczurek-lab/amp-challenge-2027):
-we condition a peptide language model on properties. Quotas copied from the known-AMP
-distribution set how many sequences go in each cell, and diversity, predicted potency,
-predicted low hemolysis and synthesis risk decide which ones.
+we condition a peptide language model on properties, then select 50,000 of its outputs so
+the library's length, charge and hydrophobic moment distribution matches the reference set,
+ranking within each cell by diversity, predicted potency, predicted low hemolysis and
+synthesis risk.
 
 ```bash
 uv run generate                     # template validator: writes generate/
